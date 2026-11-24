@@ -1,16 +1,4 @@
 {
   "version": 1,
-  "plugins": [
-    {
-      "id": "com.neurh.word-goal",
-      "name": "Word Goal",
-      "author": "neurh",
-      "description": "Set a daily writing goal and watch your progress in the status bar.",
-      "repo": "neurh/noteral-word-goal",
-      "tags": [
-        "writing",
-        "productivity"
-      ]
-    }
-  ]
+  "plugins": []
 }
