@@ -1,0 +1,15 @@
+{
+  "id": "com.noteral.reading-time",
+  "name": "Reading Time",
+  "version": "2.0.0",
+  "sdkVersion": "2.0.0",
+  "description": "A live word count and reading-time estimate for the page you are writing, with a words-per-minute you can change.",
+  "author": "Noteral",
+  "entry": "main.js",
+  "permissions": ["editor.read", "ui.status", "ui.panel", "ui.modal", "settings.read", "settings.write"],
+  "contributes": {
+    "statusItems": [{ "id": "reading-time", "label": "Reading time" }],
+    "panels": [{ "id": "reading-stats", "title": "Reading stats" }],
+    "commands": [{ "id": "set-speed", "title": "Reading Time: set reading speed", "keywords": "words per minute wpm" }]
+  }
+}

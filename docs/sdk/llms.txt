@@ -1,0 +1,201 @@
+# Noteral plugin SDK
+
+> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.0.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
+
+Rules for agents writing plugins:
+- Extend `Plugin`, put setup in `onload()`, and finish main.js with `register(MyPlugin)`. Use `this.addCommand`, `this.registerEvent`, `this.registerInterval` so cleanup is automatic.
+- Call the app only through `this.app.<namespace>.<method>({ ...params })`. There is no DOM access to the app, no Node, no fetch (use `app.network.request`).
+- Declare every permission the code needs in manifest.json `permissions`. A call without it rejects with code "permission".
+- Keep ids stable: manifest `id` is reverse-domain and never changes; `version` is semver and matches the release tag.
+- Bundle to a single IIFE (`esbuild src/main.ts --bundle --format=iife --outfile=main.js`). `@noteral/sdk` is provided at runtime; bundling it adds only a few lines.
+
+## Docs
+
+- [Plugin guide](../plugins/README.md): quick start, lifecycle, commands, panels, events, settings
+- [Manifest](../plugins/manifest.md): every manifest.json field
+- [Extending the interface](../plugins/ui.md): HTML views, sidebar tabs, status widgets, custom blocks, custom page types, Home, appearance layers, plugins.test
+- [Publishing](../plugins/publishing.md): GitHub Releases + community registry
+- [API reference](api-reference.md): every method, event, permission and type
+- [api.json](api.json): the same reference, machine-readable
+- [Assistant](../assistant.md): AI chat, providers, Ask/Edit/Creator modes, tools
+
+## Methods (plugin-callable)
+
+- app.info({}) → AppInfo — Get the app version, SDK version, theme and the open workspace.
+- editor.getActive({}) → ActivePage | null [editor.read] — Get the page open in the focused pane, or null when Home or nothing is open.
+- editor.getMarkdown({pageId?, blockIds?}) → string [editor.read] — Read the open page (or some of its blocks) as Markdown.
+- editor.getBlocks({pageId?}) → BlockSummary[] [editor.read] — List the open page's blocks with ids, types, text and nested children.
+- editor.getSelection({pageId?}) → EditorSelection [editor.read] — Get the selected text, the selected block ids and the block with the cursor.
+- editor.snapshot({}) → EditorSnapshot | null [editor.read] — Get word count, block count, plain text and outline of the open page.
+- editor.insertMarkdown({markdown, position?, blockId?, pageId?}) → { blockIds: string[] } [editor.write] — Insert Markdown at the cursor, at the start or end, or before/after a block.
+- editor.replaceBlocks({blockIds, markdown, pageId?}) → { blockIds: string[] } [editor.write] — Replace blocks with new content parsed from Markdown.
+- editor.updateBlock({blockId, type?, text?, props?, pageId?}) → void [editor.write] — Change one block's type, text or props (e.g. heading level, checked).
+- editor.removeBlocks({blockIds, pageId?}) → void [editor.write] — Remove blocks from the open page.
+- editor.setMarkdown({markdown, pageId?}) → void [editor.write] — Replace the whole open page with Markdown.
+- editor.insertBlocks({blocks}) → void [editor.write] — Insert simple blocks after the cursor (SDK 1 shape).
+- editor.undo({pageId?}) → boolean [editor.write] — Undo the last edit in the open page.
+- editor.redo({pageId?}) → boolean [editor.write] — Redo the last undone edit in the open page.
+- editor.scrollToBlock({blockId, pageId?}) → void [editor.read] — Scroll the open page to a block.
+- editor.openFind({replace?}) → void [editor.read] — Open the find bar (or find & replace) in the open page.
+- pages.list({parentId?, kind?, query?, limit?, includeRows?}) → PageInfo[] [pages.read] — List pages, folders and databases in the open workspace.
+- pages.get({pageId}) → PageInfo [pages.read] — Get one page's metadata.
+- pages.read({pageId, format?}) → PageContent [pages.read] — Read any page's content as Markdown or plain text.
+- pages.path({pageId}) → PageInfo[] [pages.read] — Get the breadcrumb path (ancestors, top first) of a page.
+- pages.favorites({}) → PageInfo[] [pages.read] — List favorite pages.
+- pages.recent({}) → PageInfo[] [pages.read] — List recently opened pages.
+- pages.backlinks({pageId}) → PageInfo[] [pages.read] — List pages that link to a page.
+- pages.trash({}) → PageInfo[] [pages.read] — List trashed pages.
+- pages.create({title?, parentId?, kind?, markdown?, icon?, open?}) → PageInfo [pages.write] — Create a page or folder, optionally with Markdown content.
+- pages.write({pageId, markdown}) → void [pages.write] — Replace a page's whole content with Markdown.
+- pages.append({pageId, markdown}) → void [pages.write] — Append Markdown to the end of a page.
+- pages.rename({pageId, title}) → void [pages.write] — Rename a page.
+- pages.setIcon({pageId, icon}) → void [pages.write] — Set a page's icon (an emoji, or "" to clear).
+- pages.setCover({pageId, cover}) → void [pages.write] — Set a page's cover: a CSS color/gradient, an image URL, or "" to clear.
+- pages.move({pageId, parentId, beforeId?}) → void [pages.write] — Move a page under another parent, optionally before a sibling.
+- pages.duplicate({pageId, open?}) → void [pages.write] — Duplicate a page with its sub-pages.
+- pages.moveToTrash({pageId}) → void [pages.write] — Move a page (and its sub-pages) to the trash.
+- pages.restore({pageId}) → void [pages.write] — Restore a page from the trash.
+- pages.setFavorite({pageId, favorite}) → void [pages.write] — Add a page to favorites or remove it.
+- databases.list({}) → DatabaseInfo[] [databases.read] — List databases with their row counts.
+- databases.getSchema({databaseId}) → DatabaseSchemaInfo [databases.read] — Get a database's properties (columns) and views.
+- databases.queryRows({databaseId, where?, limit?}) → DatabaseRowInfo[] [databases.read] — Read a database's rows with values keyed by property name.
+- databases.create({title, parentId?, properties?, view?, open?}) → { databaseId: string } [databases.write] — Create a database with properties.
+- databases.addProperty({databaseId, name, type, options?}) → { propertyId: string } [databases.write] — Add a property (column) to a database.
+- databases.addRow({databaseId, title?, values?}) → { rowId: string } [databases.write] — Add a row; values are keyed by property name.
+- databases.updateRow({rowId, title?, values?}) → void [databases.write] — Change a row's title and/or values (keyed by property name).
+- databases.getView({databaseId, viewId?}) → DatabaseViewInfo [databases.read] — Get one view with its filters, sorts, grouping, visible properties and calculations.
+- databases.queryView({databaseId, viewId?, search?, filters?, filterMode?, sorts?, limit?}) → DatabaseRowInfo[] [databases.read] — Read rows the way a view shows them (its filters and sorts applied), optionally with a search.
+- databases.addView({databaseId, name?, type?, filters?, filterMode?, sorts?, groupBy?, hiddenGroups?, show?, hide?, order?, widths?, calcs?, dateProperty?, cardPreview?, wrap?}) → DatabaseViewInfo [databases.write] — Add a view (table, board, gallery, list or calendar) with optional filters, sorts and grouping.
+- databases.updateView({databaseId, viewId, name?, type?, filters?, filterMode?, sorts?, groupBy?, hiddenGroups?, show?, hide?, order?, widths?, calcs?, dateProperty?, cardPreview?, wrap?}) → DatabaseViewInfo [databases.write] — Change a view: name, layout, filters, sorts, grouping, visible properties, order, widths, calculations.
+- databases.removeView({databaseId, viewId}) → void [databases.write] — Remove a view (a database keeps at least one).
+- databases.duplicateView({databaseId, viewId, name?}) → DatabaseViewInfo [databases.write] — Copy a view with all its settings.
+- databases.moveView({databaseId, viewId, index}) → void [databases.write] — Move a view to another position in the view tabs.
+- databases.updateProperty({databaseId, property, name?, type?, format?, options?}) → DatabaseSchemaInfo [databases.write] — Rename a property, change its type, number format or select options.
+- databases.removeProperty({databaseId, property}) → void [databases.write] — Delete a property and its values from every row.
+- databases.deleteRows({rowIds}) → { deleted: number } [databases.write] — Move rows to the trash.
+- databases.rename({databaseId, title?, titleColumn?}) → void [databases.write] — Rename a database or its title column.
+- workspaces.list({}) → WorkspaceInfo[] [workspaces.read] — List workspaces.
+- workspaces.current({}) → WorkspaceInfo | null [workspaces.read] — Get the open workspace.
+- workspaces.open({workspaceId}) → void [workspaces.write] — Switch to another workspace.
+- workspaces.create({name}) → void [workspaces.write] — Create a workspace and switch to it.
+- workspaces.rename({workspaceId, name}) → void [workspaces.write] — Rename a workspace.
+- navigation.openPage({pageId}) → void [navigation] — Open a page in the focused pane.
+- navigation.openHome({}) → void [navigation] — Open a Home tab.
+- navigation.back({}) → void [navigation] — Go back in history.
+- navigation.forward({}) → void [navigation] — Go forward in history.
+- tabs.list({}) → TabInfo[] [navigation] — List open tabs (page tabs and Home tabs).
+- tabs.close({tabId}) → void [navigation] — Close a tab.
+- layout.get({}) → LayoutInfo [layout] — Get panes, sidebars and their sizes.
+- layout.split({paneId?, side}) → void [layout] — Split a pane; the new pane opens Home.
+- layout.closePane({paneId}) → void [layout] — Close a pane and its tabs.
+- layout.toggleMaximize({paneId?}) → void [layout] — Maximize a pane or restore it.
+- layout.setPanels({leftOpen?, rightOpen?, railOpen?, leftWidth?, rightWidth?, leftTab?, rightTab?}) → void [layout] — Show/hide the sidebars and rail, resize them, or switch their tabs.
+- layout.openOverlay({overlay}) → void [layout] — Open an app dialog (command palette, library, plugins, settings, workspaces) or close it.
+- search.query({query, limit?}) → SearchHitInfo[] [search.read] — Full-text search across the open workspace.
+- assets.pickImage({}) → string | null [assets.write] — Ask the user to pick an image; returns its URL.
+- assets.pickFile({}) → string | null [assets.write] — Ask the user to pick a file; returns its URL.
+- settings.get({}) → Record<string, unknown> [settings.read] — Read the plugin's saved settings.
+- settings.set({patch}) → Record<string, unknown> [settings.write] — Merge a patch into the plugin's saved settings.
+- preferences.get({}) → Preferences [preferences] — Read app preferences (theme, fonts, page width, autosave, …).
+- preferences.update({theme?, editorFont?, fontSize?, lineHeight?, pageWidth?, fullWidth?, autosaveDelay?, spellcheck?, reduceMotion?, showStats?}) → Preferences [preferences] — Change app preferences.
+- appearance.get({}) → Customizations [appearance] — Get the current customizations (tokens, CSS snippets, component styles).
+- appearance.listTokens({}) → TokenInfo[] [appearance] — List the design tokens with their default light and dark values.
+- appearance.listComponents({}) → ComponentInfo[] [appearance] — List the app components that can be styled or hidden.
+- appearance.setTokens({light?, dark?, both?, layer?}) → Customizations [appearance] — Override design tokens (colors, fonts, radii, sizes) for light and/or dark.
+- appearance.styleComponent({component, css?, rules?, hidden?, layer?}) → Customizations [appearance] — Style or hide an app component (see appearance.listComponents).
+- appearance.addCss({id, css, label?, enabled?, layer?}) → Customizations [appearance] — Add or replace a named CSS snippet applied to the whole app.
+- appearance.removeCss({id, layer?}) → Customizations [appearance] — Remove a CSS snippet.
+- appearance.reset({scope?, layer?}) → Customizations [appearance] — Reset customizations (all, or only tokens, CSS snippets or component styles).
+- appearance.listLayers({}) → LayerInfo[] [appearance] — List customization layers: switchable bundles of looks, sidebar tabs, status widgets, block and page types.
+- appearance.setLayer({id, name?, description?, enabled?}) → LayerInfo [appearance] — Create a layer or change its name, description or on/off state.
+- appearance.setLayerPermissions({id, permissions}) → LayerInfo [appearance] — Set the App API permissions a layer's HTML views (tabs, widgets, blocks, pages) run with.
+- appearance.removeLayer({id}) → void [appearance] — Delete a layer and everything it adds.
+- commands.list({query?}) → CommandInfo[] — List every command in the command palette.
+- commands.execute({id}) → void [commands.execute] — Run a command by id.
+- ui.notify({message, kind?}) → void [ui.notify] — Show a toast notification.
+- ui.confirm({title, message?, confirmLabel?, danger?}) → boolean [ui.modal] — Ask the user to confirm something.
+- ui.prompt({title, message?, placeholder?, value?, multiline?}) → string | null [ui.modal] — Ask the user to type a value. Resolves to null when cancelled.
+- ui.pick({title, items}) → string | null [ui.modal] — Ask the user to pick one item from a list. Resolves to the id or null.
+- ui.ask({question, options?, multiple?, allowText?, placeholder?}) → AskResult [ui.modal] — Ask the user a question with choices and/or a free-text answer, and wait for the reply.
+- ui.setStatus({itemId, text, title?}) → void [ui.status] — Show text in the status bar (declare the item in manifest.contributes.statusItems or by id).
+- ui.setPanel({panelId, title?, markdown, actions?}) → void [ui.panel] — Render a sidebar panel from Markdown, with optional action buttons.
+- ui.addStyles({css}) → void [ui.styles] — Add CSS for the plugin's own look (replaces the plugin's previous styles).
+- clipboard.readText({}) → string [clipboard] — Read text from the clipboard.
+- clipboard.writeText({text}) → void [clipboard] — Copy text to the clipboard.
+- web.search({query, limit?}) → WebSearchResult [network] — Search the web (free, no API key). Returns titles, URLs and snippets.
+- web.fetch({url, maxChars?}) → WebPage [network] — Fetch a web page and return its readable text, title and links.
+- network.request({url, method?, headers?, body?}) → HttpResponse [network] — Make an HTTP request (any method, headers and body) through the app.
+- sidebar.list({}) → SidebarInfo — List the right sidebar's tab groups (stacked panels) and every available tab.
+- sidebar.setTab({id, title, icon?, markdown?, actions?, html?, open?, split?, layer?}) → SidebarTabInfo [ui.panel] — Add or update a right-sidebar tab with Markdown (+ buttons) or a full HTML view.
+- sidebar.removeTab({id, layer?}) → void [ui.panel] — Remove a tab added with sidebar.setTab.
+- sidebar.openTab({id, split?}) → void [layout] — Show the right sidebar and activate a tab (built-in: outline, backlinks, info, assistant).
+- sidebar.setLayout({groups, width?}) → SidebarInfo [layout] — Arrange the right sidebar: stacked groups of tabs, their order, sizes and active tabs.
+- sidebar.moveTab({id, group, index?}) → SidebarInfo [layout] — Move a tab to another group (or a new group) and position.
+- statusBar.list({}) → StatusWidgetInfo[] — List status bar widgets (built-in and custom).
+- statusBar.setWidget({id, text?, tooltip?, icon?, html?, width?, side?, order?, command?, layer?}) → StatusWidgetInfo [ui.status] — Add or update a status bar widget: text with an icon and click command, or a small HTML view.
+- statusBar.removeWidget({id, layer?}) → void [ui.status] — Remove a status bar widget.
+- blocks.registerType({type, title, description?, icon?, keywords?, html, defaultData?, height?, layer?}) → BlockTypeInfo [blocks] — Register a custom editor block type rendered by an HTML view; it appears in the slash menu.
+- blocks.unregisterType({type, layer?}) → void [blocks] — Remove a custom block type (existing blocks show a placeholder).
+- blocks.listTypes({}) → BlockTypeInfo[] — List custom block types.
+- blocks.insert({type, data?, after?}) → { blockId: string } [editor.write] — Insert a custom block into the open page.
+- blocks.setData({blockId, data}) → void [editor.write] — Replace the data of a custom block in the open page.
+- nodes.registerType({type, title, description?, icon?, html, defaultData?, layer?}) → NodeTypeInfo [nodes] — Register a custom page type for the page tree, opened in a full-page HTML view.
+- nodes.unregisterType({type, layer?}) → void [nodes] — Remove a custom page type (existing items show a placeholder).
+- nodes.listTypes({}) → NodeTypeInfo[] — List custom page types.
+- nodes.create({type, title?, parentId?, data?, open?}) → { pageId: string } [pages.write] — Create an item of a custom page type in the tree.
+- nodes.getData({pageId}) → { type: string; data: unknown } [pages.read] — Read a custom item's type and data.
+- nodes.setData({pageId, data}) → void [pages.write] — Replace a custom item's data.
+- home.listViews({}) → HomeViewSummary[] — List Home views (built-in templates and custom views).
+- home.widgetTypes({}) → HomeWidgetTypeInfo[] — List Home widget types with their default sizes.
+- home.getView({viewId}) → HomeViewInfo — Get a custom Home view with all widgets and settings.
+- home.createView({name?, from?, empty?, open?}) → HomeViewInfo [home] — Create a custom Home view (empty, from a template layout, or a copy).
+- home.updateView({viewId, name?, title?, width?, gap?, cards?, radius?, shadow?, font?, valign?, accent?, css?}) → HomeViewInfo [home] — Change a custom view's settings: name, width, gap, card style, radius, shadow, font, accent, CSS.
+- home.removeView({viewId}) → void [home] — Delete a custom Home view.
+- home.setDefault({viewId}) → void [home] — Make a view (template id or custom view id) the default for new Home tabs.
+- home.open({viewId}) → void [navigation] — Open a Home view (template id or custom view id) in a Home tab.
+- home.setBackground({viewId, background, color?, gradient?}) → void [home] — Set a Home view's background: a preset, a color, a gradient or an animated wallpaper.
+- home.addWidget({viewId, type, x?, y?, w?, h?, title?, hideTitle?, style?, tint?, variant?, text?, limit?, pageId?, pageIds?, url?, date?, html?, css?, data?}) → HomeWidgetInfo [home] — Add a widget to a custom Home view; type "html" is a fully custom widget (HTML/CSS/JS).
+- home.updateWidget({viewId, widgetId, type?, x?, y?, w?, h?, title?, hideTitle?, style?, tint?, variant?, text?, limit?, pageId?, pageIds?, url?, date?, html?, css?, data?}) → HomeWidgetInfo [home] — Change a Home widget (position, size, style, content).
+- home.removeWidget({viewId, widgetId}) → void [home] — Remove a Home widget.
+- views.post({name, payload?, view?}) → { delivered: number } — Send a message to the plugin's HTML views (tabs, widgets, blocks, pages); they receive it with noteral.onMessage.
+
+## Events
+
+- document:changed: EditorSnapshot — The open page changed (debounced). Payload is the editor snapshot.
+- page:opened: ActivePage | null — A different page (or Home) became active.
+- theme:changed: { theme: "light" | "dark" } — Light/dark theme changed.
+- workspace:opened: WorkspaceInfo — A workspace was opened.
+- pages:changed: { count: number } — Pages were created, renamed, moved or trashed.
+- panel:action: { panelId: string; actionId: string } — A button in one of the plugin's panels or Markdown tabs was pressed.
+- view:message: { view: string; name: string; payload: unknown } — One of the plugin's HTML views called noteral.post(name, payload).
+
+## Permissions
+
+- editor.read (low): Read the text, blocks and selection of the page you are editing.
+- editor.write (medium): Insert, change and remove blocks in the page you are editing.
+- pages.read (medium): List pages and read the content of any page in the workspace.
+- pages.write (high): Create, rename, move, rewrite and trash pages.
+- databases.read (medium): Read database schemas and rows.
+- databases.write (high): Create databases, add properties and add or edit rows.
+- navigation (low): Open pages, go back and forward, open Home.
+- search.read (medium): Run full-text searches across the workspace.
+- ui.status (low): Show text and widgets in the status bar.
+- ui.notify (low): Show toast notifications.
+- ui.panel (low): Add tabs to the right sidebar.
+- ui.modal (low): Ask you to confirm, type an answer or pick from a list.
+- ui.styles (medium): Add CSS to the app (for the plugin's own look).
+- settings.read (low): Read the plugin's own saved settings.
+- settings.write (low): Save the plugin's own settings.
+- assets.read (low): Read images and files attached to pages.
+- assets.write (low): Ask you to pick an image or file and import it.
+- workspaces.read (low): List workspaces and see which one is open.
+- workspaces.write (high): Create, rename and switch workspaces.
+- layout (low): Split panes, arrange sidebar tab groups, show or hide sidebars and resize panels.
+- appearance (medium): Change colors, fonts and component styles across the app.
+- preferences (medium): Read and change app preferences such as theme and font size.
+- commands.execute (high): Run any command from the command palette.
+- clipboard (medium): Read and write the clipboard.
+- network (high): Make web requests, search the web and fetch pages.
+- blocks (low): Add new kinds of blocks to the editor (rendered in a sandbox).
+- nodes (low): Add new kinds of items to the page tree (rendered in a sandbox).
+- home (medium): Create, change and remove Home views and widgets.

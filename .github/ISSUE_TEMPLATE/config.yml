@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Plugin developer docs
+    url: https://github.com/neurh/noteral-plugins/blob/main/docs/plugins/README.md
+    about: Build, release and publish a Noteral plugin.

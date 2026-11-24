@@ -1,0 +1,79 @@
+# Community plugin registry.
+#
+# - validate: every push/PR touching registry/ (offline format + rules check).
+# - review:   the registry bot. Runs on pull_request_target so it can comment on
+#             pull requests from forks; it checks out the BASE branch (trusted
+#             code) and reads only the PR's community-plugins.json, as data.
+# - audit:    weekly re-check of every listed plugin's latest release.
+name: Registry
+on:
+  push:
+    branches: [main]
+    paths: ["registry/**", "sdk/cli/**"]
+  pull_request:
+    paths: ["registry/**", "sdk/cli/**"]
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+    paths: ["registry/community-plugins.json"]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node registry/validate.mjs
+      - run: node --test registry/*.test.mjs
+
+  review:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    concurrency:
+      group: registry-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Read the pull request's registry file (data only)
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch --no-tags --depth=1 origin "+refs/pull/$PR/head:refs/remotes/pr/head"
+          git show "refs/remotes/pr/head:registry/community-plugins.json" > "$RUNNER_TEMP/head.json" || echo '{}' > "$RUNNER_TEMP/head.json"
+          cp registry/community-plugins.json "$RUNNER_TEMP/base.json"
+          gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json files -q '.files[].path' > "$RUNNER_TEMP/files.txt"
+      - name: Review
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          node registry/review.mjs
+          --base "$RUNNER_TEMP/base.json" --head "$RUNNER_TEMP/head.json"
+          --files "$RUNNER_TEMP/files.txt" --author "$AUTHOR"
+          --comment "$PR" --repo "$GITHUB_REPOSITORY" --out "$GITHUB_STEP_SUMMARY"
+
+  audit:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Check every listed plugin's latest release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: node registry/review.mjs --all --out "$GITHUB_STEP_SUMMARY"

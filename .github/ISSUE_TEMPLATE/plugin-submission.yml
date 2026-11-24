@@ -1,0 +1,36 @@
+name: Submit a community plugin
+description: List your plugin in Noteral's community store without using the command line.
+title: "Add plugin: "
+labels: ["plugin submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Prefer the terminal? `node scripts/noteral-plugin.mjs submit` in your plugin repo opens the pull request for you.
+
+        Before you submit, your plugin's **public** GitHub repo needs a published release with `manifest.json` and `main.js` attached as assets (`noteral-plugin release` does this). The bot checks it and opens the pull request; a maintainer reviews and merges it.
+  - type: input
+    id: repo
+    attributes:
+      label: Repository
+      description: Your plugin's GitHub repo, as owner/name.
+      placeholder: your-name/noteral-word-goal
+    validations:
+      required: true
+  - type: input
+    id: tags
+    attributes:
+      label: Tags
+      description: Up to 8, comma separated. Optional.
+      placeholder: writing, stats
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I own or maintain this repository.
+          required: true
+        - label: The released code is readable (not obfuscated) and built from the repository's source.
+          required: true
+        - label: The plugin uses every permission it asks for.
+          required: true

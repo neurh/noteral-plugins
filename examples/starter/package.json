@@ -1,0 +1,12 @@
+{
+  "name": "noteral-starter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/noteral-plugin.mjs build",
+    "check": "node scripts/noteral-plugin.mjs check",
+    "release": "node scripts/noteral-plugin.mjs release",
+    "submit": "node scripts/noteral-plugin.mjs submit",
+    "status": "node scripts/noteral-plugin.mjs status"
+  }
+}

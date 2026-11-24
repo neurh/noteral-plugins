@@ -1,0 +1,11 @@
+{
+  "name": "@noteral/sdk",
+  "version": "2.0.0",
+  "description": "Versioned TypeScript SDK for sandboxed Noteral plugins",
+  "type": "module",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "license": "MIT"
+}

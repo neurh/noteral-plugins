@@ -1,0 +1,32 @@
+# Turns a "Submit a community plugin" issue into a registry pull request.
+# Needs Settings → Actions → General → "Allow GitHub Actions to create and
+# approve pull requests". The issue text is passed as data (env), never run.
+name: Registry submission
+on:
+  issues:
+    types: [opened, edited, labeled]
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+concurrency:
+  group: registry-submit-${{ github.event.issue.number }}
+  cancel-in-progress: true
+jobs:
+  submit:
+    if: >
+      github.event.issue.state == 'open' &&
+      contains(github.event.issue.labels.*.name, 'plugin submission') &&
+      !github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Check the release and open the pull request
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          GH_TOKEN: ${{ github.token }}
+        run: node registry/from-issue.mjs

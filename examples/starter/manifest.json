@@ -1,0 +1,16 @@
+{
+  "id": "com.example.starter",
+  "name": "Starter Plugin",
+  "version": "0.1.0",
+  "sdkVersion": "2.0.0",
+  "minAppVersion": "0.1.0",
+  "description": "A minimal plugin to copy: one command, one status item, one panel.",
+  "author": "You",
+  "repo": "your-name/noteral-starter",
+  "entry": "main.js",
+  "permissions": ["editor.read", "ui.status", "ui.panel", "ui.notify"],
+  "contributes": {
+    "statusItems": [{ "id": "blocks", "label": "Blocks" }],
+    "panels": [{ "id": "hello", "title": "Starter" }]
+  }
+}

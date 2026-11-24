@@ -1,0 +1,26 @@
+{
+  "id": "com.noteral.meeting-notes",
+  "name": "Meeting Notes",
+  "version": "2.0.0",
+  "sdkVersion": "2.0.0",
+  "description": "Starts a structured meeting note: attendees, agenda, decisions and action items, dated today.",
+  "author": "Noteral",
+  "entry": "main.js",
+  "permissions": ["editor.read", "editor.write", "pages.write", "ui.notify"],
+  "contributes": {
+    "commands": [
+      {
+        "id": "insert-meeting-notes",
+        "title": "Insert meeting notes template",
+        "description": "Adds attendees, agenda, decisions and action items to this page.",
+        "keywords": "meeting agenda notes template actions"
+      },
+      {
+        "id": "new-meeting-page",
+        "title": "New meeting page",
+        "description": "Creates a dated page from the meeting template.",
+        "keywords": "meeting create page today"
+      }
+    ]
+  }
+}

@@ -1,0 +1,3274 @@
+# Noteral plugin SDK
+
+> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.0.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
+
+Rules for agents writing plugins:
+- Extend `Plugin`, put setup in `onload()`, and finish main.js with `register(MyPlugin)`. Use `this.addCommand`, `this.registerEvent`, `this.registerInterval` so cleanup is automatic.
+- Call the app only through `this.app.<namespace>.<method>({ ...params })`. There is no DOM access to the app, no Node, no fetch (use `app.network.request`).
+- Declare every permission the code needs in manifest.json `permissions`. A call without it rejects with code "permission".
+- Keep ids stable: manifest `id` is reverse-domain and never changes; `version` is semver and matches the release tag.
+- Bundle to a single IIFE (`esbuild src/main.ts --bundle --format=iife --outfile=main.js`). `@noteral/sdk` is provided at runtime; bundling it adds only a few lines.
+
+## Docs
+
+- [Plugin guide](../plugins/README.md): quick start, lifecycle, commands, panels, events, settings
+- [Manifest](../plugins/manifest.md): every manifest.json field
+- [Extending the interface](../plugins/ui.md): HTML views, sidebar tabs, status widgets, custom blocks, custom page types, Home, appearance layers, plugins.test
+- [Publishing](../plugins/publishing.md): GitHub Releases + community registry
+- [API reference](api-reference.md): every method, event, permission and type
+- [api.json](api.json): the same reference, machine-readable
+- [Assistant](../assistant.md): AI chat, providers, Ask/Edit/Creator modes, tools
+
+## Methods (plugin-callable)
+
+- app.info({}) → AppInfo — Get the app version, SDK version, theme and the open workspace.
+- editor.getActive({}) → ActivePage | null [editor.read] — Get the page open in the focused pane, or null when Home or nothing is open.
+- editor.getMarkdown({pageId?, blockIds?}) → string [editor.read] — Read the open page (or some of its blocks) as Markdown.
+- editor.getBlocks({pageId?}) → BlockSummary[] [editor.read] — List the open page's blocks with ids, types, text and nested children.
+- editor.getSelection({pageId?}) → EditorSelection [editor.read] — Get the selected text, the selected block ids and the block with the cursor.
+- editor.snapshot({}) → EditorSnapshot | null [editor.read] — Get word count, block count, plain text and outline of the open page.
+- editor.insertMarkdown({markdown, position?, blockId?, pageId?}) → { blockIds: string[] } [editor.write] — Insert Markdown at the cursor, at the start or end, or before/after a block.
+- editor.replaceBlocks({blockIds, markdown, pageId?}) → { blockIds: string[] } [editor.write] — Replace blocks with new content parsed from Markdown.
+- editor.updateBlock({blockId, type?, text?, props?, pageId?}) → void [editor.write] — Change one block's type, text or props (e.g. heading level, checked).
+- editor.removeBlocks({blockIds, pageId?}) → void [editor.write] — Remove blocks from the open page.
+- editor.setMarkdown({markdown, pageId?}) → void [editor.write] — Replace the whole open page with Markdown.
+- editor.insertBlocks({blocks}) → void [editor.write] — Insert simple blocks after the cursor (SDK 1 shape).
+- editor.undo({pageId?}) → boolean [editor.write] — Undo the last edit in the open page.
+- editor.redo({pageId?}) → boolean [editor.write] — Redo the last undone edit in the open page.
+- editor.scrollToBlock({blockId, pageId?}) → void [editor.read] — Scroll the open page to a block.
+- editor.openFind({replace?}) → void [editor.read] — Open the find bar (or find & replace) in the open page.
+- pages.list({parentId?, kind?, query?, limit?, includeRows?}) → PageInfo[] [pages.read] — List pages, folders and databases in the open workspace.
+- pages.get({pageId}) → PageInfo [pages.read] — Get one page's metadata.
+- pages.read({pageId, format?}) → PageContent [pages.read] — Read any page's content as Markdown or plain text.
+- pages.path({pageId}) → PageInfo[] [pages.read] — Get the breadcrumb path (ancestors, top first) of a page.
+- pages.favorites({}) → PageInfo[] [pages.read] — List favorite pages.
+- pages.recent({}) → PageInfo[] [pages.read] — List recently opened pages.
+- pages.backlinks({pageId}) → PageInfo[] [pages.read] — List pages that link to a page.
+- pages.trash({}) → PageInfo[] [pages.read] — List trashed pages.
+- pages.create({title?, parentId?, kind?, markdown?, icon?, open?}) → PageInfo [pages.write] — Create a page or folder, optionally with Markdown content.
+- pages.write({pageId, markdown}) → void [pages.write] — Replace a page's whole content with Markdown.
+- pages.append({pageId, markdown}) → void [pages.write] — Append Markdown to the end of a page.
+- pages.rename({pageId, title}) → void [pages.write] — Rename a page.
+- pages.setIcon({pageId, icon}) → void [pages.write] — Set a page's icon (an emoji, or "" to clear).
+- pages.setCover({pageId, cover}) → void [pages.write] — Set a page's cover: a CSS color/gradient, an image URL, or "" to clear.
+- pages.move({pageId, parentId, beforeId?}) → void [pages.write] — Move a page under another parent, optionally before a sibling.
+- pages.duplicate({pageId, open?}) → void [pages.write] — Duplicate a page with its sub-pages.
+- pages.moveToTrash({pageId}) → void [pages.write] — Move a page (and its sub-pages) to the trash.
+- pages.restore({pageId}) → void [pages.write] — Restore a page from the trash.
+- pages.setFavorite({pageId, favorite}) → void [pages.write] — Add a page to favorites or remove it.
+- databases.list({}) → DatabaseInfo[] [databases.read] — List databases with their row counts.
+- databases.getSchema({databaseId}) → DatabaseSchemaInfo [databases.read] — Get a database's properties (columns) and views.
+- databases.queryRows({databaseId, where?, limit?}) → DatabaseRowInfo[] [databases.read] — Read a database's rows with values keyed by property name.
+- databases.create({title, parentId?, properties?, view?, open?}) → { databaseId: string } [databases.write] — Create a database with properties.
+- databases.addProperty({databaseId, name, type, options?}) → { propertyId: string } [databases.write] — Add a property (column) to a database.
+- databases.addRow({databaseId, title?, values?}) → { rowId: string } [databases.write] — Add a row; values are keyed by property name.
+- databases.updateRow({rowId, title?, values?}) → void [databases.write] — Change a row's title and/or values (keyed by property name).
+- databases.getView({databaseId, viewId?}) → DatabaseViewInfo [databases.read] — Get one view with its filters, sorts, grouping, visible properties and calculations.
+- databases.queryView({databaseId, viewId?, search?, filters?, filterMode?, sorts?, limit?}) → DatabaseRowInfo[] [databases.read] — Read rows the way a view shows them (its filters and sorts applied), optionally with a search.
+- databases.addView({databaseId, name?, type?, filters?, filterMode?, sorts?, groupBy?, hiddenGroups?, show?, hide?, order?, widths?, calcs?, dateProperty?, cardPreview?, wrap?}) → DatabaseViewInfo [databases.write] — Add a view (table, board, gallery, list or calendar) with optional filters, sorts and grouping.
+- databases.updateView({databaseId, viewId, name?, type?, filters?, filterMode?, sorts?, groupBy?, hiddenGroups?, show?, hide?, order?, widths?, calcs?, dateProperty?, cardPreview?, wrap?}) → DatabaseViewInfo [databases.write] — Change a view: name, layout, filters, sorts, grouping, visible properties, order, widths, calculations.
+- databases.removeView({databaseId, viewId}) → void [databases.write] — Remove a view (a database keeps at least one).
+- databases.duplicateView({databaseId, viewId, name?}) → DatabaseViewInfo [databases.write] — Copy a view with all its settings.
+- databases.moveView({databaseId, viewId, index}) → void [databases.write] — Move a view to another position in the view tabs.
+- databases.updateProperty({databaseId, property, name?, type?, format?, options?}) → DatabaseSchemaInfo [databases.write] — Rename a property, change its type, number format or select options.
+- databases.removeProperty({databaseId, property}) → void [databases.write] — Delete a property and its values from every row.
+- databases.deleteRows({rowIds}) → { deleted: number } [databases.write] — Move rows to the trash.
+- databases.rename({databaseId, title?, titleColumn?}) → void [databases.write] — Rename a database or its title column.
+- workspaces.list({}) → WorkspaceInfo[] [workspaces.read] — List workspaces.
+- workspaces.current({}) → WorkspaceInfo | null [workspaces.read] — Get the open workspace.
+- workspaces.open({workspaceId}) → void [workspaces.write] — Switch to another workspace.
+- workspaces.create({name}) → void [workspaces.write] — Create a workspace and switch to it.
+- workspaces.rename({workspaceId, name}) → void [workspaces.write] — Rename a workspace.
+- navigation.openPage({pageId}) → void [navigation] — Open a page in the focused pane.
+- navigation.openHome({}) → void [navigation] — Open a Home tab.
+- navigation.back({}) → void [navigation] — Go back in history.
+- navigation.forward({}) → void [navigation] — Go forward in history.
+- tabs.list({}) → TabInfo[] [navigation] — List open tabs (page tabs and Home tabs).
+- tabs.close({tabId}) → void [navigation] — Close a tab.
+- layout.get({}) → LayoutInfo [layout] — Get panes, sidebars and their sizes.
+- layout.split({paneId?, side}) → void [layout] — Split a pane; the new pane opens Home.
+- layout.closePane({paneId}) → void [layout] — Close a pane and its tabs.
+- layout.toggleMaximize({paneId?}) → void [layout] — Maximize a pane or restore it.
+- layout.setPanels({leftOpen?, rightOpen?, railOpen?, leftWidth?, rightWidth?, leftTab?, rightTab?}) → void [layout] — Show/hide the sidebars and rail, resize them, or switch their tabs.
+- layout.openOverlay({overlay}) → void [layout] — Open an app dialog (command palette, library, plugins, settings, workspaces) or close it.
+- search.query({query, limit?}) → SearchHitInfo[] [search.read] — Full-text search across the open workspace.
+- assets.pickImage({}) → string | null [assets.write] — Ask the user to pick an image; returns its URL.
+- assets.pickFile({}) → string | null [assets.write] — Ask the user to pick a file; returns its URL.
+- settings.get({}) → Record<string, unknown> [settings.read] — Read the plugin's saved settings.
+- settings.set({patch}) → Record<string, unknown> [settings.write] — Merge a patch into the plugin's saved settings.
+- preferences.get({}) → Preferences [preferences] — Read app preferences (theme, fonts, page width, autosave, …).
+- preferences.update({theme?, editorFont?, fontSize?, lineHeight?, pageWidth?, fullWidth?, autosaveDelay?, spellcheck?, reduceMotion?, showStats?}) → Preferences [preferences] — Change app preferences.
+- appearance.get({}) → Customizations [appearance] — Get the current customizations (tokens, CSS snippets, component styles).
+- appearance.listTokens({}) → TokenInfo[] [appearance] — List the design tokens with their default light and dark values.
+- appearance.listComponents({}) → ComponentInfo[] [appearance] — List the app components that can be styled or hidden.
+- appearance.setTokens({light?, dark?, both?, layer?}) → Customizations [appearance] — Override design tokens (colors, fonts, radii, sizes) for light and/or dark.
+- appearance.styleComponent({component, css?, rules?, hidden?, layer?}) → Customizations [appearance] — Style or hide an app component (see appearance.listComponents).
+- appearance.addCss({id, css, label?, enabled?, layer?}) → Customizations [appearance] — Add or replace a named CSS snippet applied to the whole app.
+- appearance.removeCss({id, layer?}) → Customizations [appearance] — Remove a CSS snippet.
+- appearance.reset({scope?, layer?}) → Customizations [appearance] — Reset customizations (all, or only tokens, CSS snippets or component styles).
+- appearance.listLayers({}) → LayerInfo[] [appearance] — List customization layers: switchable bundles of looks, sidebar tabs, status widgets, block and page types.
+- appearance.setLayer({id, name?, description?, enabled?}) → LayerInfo [appearance] — Create a layer or change its name, description or on/off state.
+- appearance.setLayerPermissions({id, permissions}) → LayerInfo [appearance] — Set the App API permissions a layer's HTML views (tabs, widgets, blocks, pages) run with.
+- appearance.removeLayer({id}) → void [appearance] — Delete a layer and everything it adds.
+- commands.list({query?}) → CommandInfo[] — List every command in the command palette.
+- commands.execute({id}) → void [commands.execute] — Run a command by id.
+- ui.notify({message, kind?}) → void [ui.notify] — Show a toast notification.
+- ui.confirm({title, message?, confirmLabel?, danger?}) → boolean [ui.modal] — Ask the user to confirm something.
+- ui.prompt({title, message?, placeholder?, value?, multiline?}) → string | null [ui.modal] — Ask the user to type a value. Resolves to null when cancelled.
+- ui.pick({title, items}) → string | null [ui.modal] — Ask the user to pick one item from a list. Resolves to the id or null.
+- ui.ask({question, options?, multiple?, allowText?, placeholder?}) → AskResult [ui.modal] — Ask the user a question with choices and/or a free-text answer, and wait for the reply.
+- ui.setStatus({itemId, text, title?}) → void [ui.status] — Show text in the status bar (declare the item in manifest.contributes.statusItems or by id).
+- ui.setPanel({panelId, title?, markdown, actions?}) → void [ui.panel] — Render a sidebar panel from Markdown, with optional action buttons.
+- ui.addStyles({css}) → void [ui.styles] — Add CSS for the plugin's own look (replaces the plugin's previous styles).
+- clipboard.readText({}) → string [clipboard] — Read text from the clipboard.
+- clipboard.writeText({text}) → void [clipboard] — Copy text to the clipboard.
+- web.search({query, limit?}) → WebSearchResult [network] — Search the web (free, no API key). Returns titles, URLs and snippets.
+- web.fetch({url, maxChars?}) → WebPage [network] — Fetch a web page and return its readable text, title and links.
+- network.request({url, method?, headers?, body?}) → HttpResponse [network] — Make an HTTP request (any method, headers and body) through the app.
+- sidebar.list({}) → SidebarInfo — List the right sidebar's tab groups (stacked panels) and every available tab.
+- sidebar.setTab({id, title, icon?, markdown?, actions?, html?, open?, split?, layer?}) → SidebarTabInfo [ui.panel] — Add or update a right-sidebar tab with Markdown (+ buttons) or a full HTML view.
+- sidebar.removeTab({id, layer?}) → void [ui.panel] — Remove a tab added with sidebar.setTab.
+- sidebar.openTab({id, split?}) → void [layout] — Show the right sidebar and activate a tab (built-in: outline, backlinks, info, assistant).
+- sidebar.setLayout({groups, width?}) → SidebarInfo [layout] — Arrange the right sidebar: stacked groups of tabs, their order, sizes and active tabs.
+- sidebar.moveTab({id, group, index?}) → SidebarInfo [layout] — Move a tab to another group (or a new group) and position.
+- statusBar.list({}) → StatusWidgetInfo[] — List status bar widgets (built-in and custom).
+- statusBar.setWidget({id, text?, tooltip?, icon?, html?, width?, side?, order?, command?, layer?}) → StatusWidgetInfo [ui.status] — Add or update a status bar widget: text with an icon and click command, or a small HTML view.
+- statusBar.removeWidget({id, layer?}) → void [ui.status] — Remove a status bar widget.
+- blocks.registerType({type, title, description?, icon?, keywords?, html, defaultData?, height?, layer?}) → BlockTypeInfo [blocks] — Register a custom editor block type rendered by an HTML view; it appears in the slash menu.
+- blocks.unregisterType({type, layer?}) → void [blocks] — Remove a custom block type (existing blocks show a placeholder).
+- blocks.listTypes({}) → BlockTypeInfo[] — List custom block types.
+- blocks.insert({type, data?, after?}) → { blockId: string } [editor.write] — Insert a custom block into the open page.
+- blocks.setData({blockId, data}) → void [editor.write] — Replace the data of a custom block in the open page.
+- nodes.registerType({type, title, description?, icon?, html, defaultData?, layer?}) → NodeTypeInfo [nodes] — Register a custom page type for the page tree, opened in a full-page HTML view.
+- nodes.unregisterType({type, layer?}) → void [nodes] — Remove a custom page type (existing items show a placeholder).
+- nodes.listTypes({}) → NodeTypeInfo[] — List custom page types.
+- nodes.create({type, title?, parentId?, data?, open?}) → { pageId: string } [pages.write] — Create an item of a custom page type in the tree.
+- nodes.getData({pageId}) → { type: string; data: unknown } [pages.read] — Read a custom item's type and data.
+- nodes.setData({pageId, data}) → void [pages.write] — Replace a custom item's data.
+- home.listViews({}) → HomeViewSummary[] — List Home views (built-in templates and custom views).
+- home.widgetTypes({}) → HomeWidgetTypeInfo[] — List Home widget types with their default sizes.
+- home.getView({viewId}) → HomeViewInfo — Get a custom Home view with all widgets and settings.
+- home.createView({name?, from?, empty?, open?}) → HomeViewInfo [home] — Create a custom Home view (empty, from a template layout, or a copy).
+- home.updateView({viewId, name?, title?, width?, gap?, cards?, radius?, shadow?, font?, valign?, accent?, css?}) → HomeViewInfo [home] — Change a custom view's settings: name, width, gap, card style, radius, shadow, font, accent, CSS.
+- home.removeView({viewId}) → void [home] — Delete a custom Home view.
+- home.setDefault({viewId}) → void [home] — Make a view (template id or custom view id) the default for new Home tabs.
+- home.open({viewId}) → void [navigation] — Open a Home view (template id or custom view id) in a Home tab.
+- home.setBackground({viewId, background, color?, gradient?}) → void [home] — Set a Home view's background: a preset, a color, a gradient or an animated wallpaper.
+- home.addWidget({viewId, type, x?, y?, w?, h?, title?, hideTitle?, style?, tint?, variant?, text?, limit?, pageId?, pageIds?, url?, date?, html?, css?, data?}) → HomeWidgetInfo [home] — Add a widget to a custom Home view; type "html" is a fully custom widget (HTML/CSS/JS).
+- home.updateWidget({viewId, widgetId, type?, x?, y?, w?, h?, title?, hideTitle?, style?, tint?, variant?, text?, limit?, pageId?, pageIds?, url?, date?, html?, css?, data?}) → HomeWidgetInfo [home] — Change a Home widget (position, size, style, content).
+- home.removeWidget({viewId, widgetId}) → void [home] — Remove a Home widget.
+- views.post({name, payload?, view?}) → { delivered: number } — Send a message to the plugin's HTML views (tabs, widgets, blocks, pages); they receive it with noteral.onMessage.
+
+## Events
+
+- document:changed: EditorSnapshot — The open page changed (debounced). Payload is the editor snapshot.
+- page:opened: ActivePage | null — A different page (or Home) became active.
+- theme:changed: { theme: "light" | "dark" } — Light/dark theme changed.
+- workspace:opened: WorkspaceInfo — A workspace was opened.
+- pages:changed: { count: number } — Pages were created, renamed, moved or trashed.
+- panel:action: { panelId: string; actionId: string } — A button in one of the plugin's panels or Markdown tabs was pressed.
+- view:message: { view: string; name: string; payload: unknown } — One of the plugin's HTML views called noteral.post(name, payload).
+
+## Permissions
+
+- editor.read (low): Read the text, blocks and selection of the page you are editing.
+- editor.write (medium): Insert, change and remove blocks in the page you are editing.
+- pages.read (medium): List pages and read the content of any page in the workspace.
+- pages.write (high): Create, rename, move, rewrite and trash pages.
+- databases.read (medium): Read database schemas and rows.
+- databases.write (high): Create databases, add properties and add or edit rows.
+- navigation (low): Open pages, go back and forward, open Home.
+- search.read (medium): Run full-text searches across the workspace.
+- ui.status (low): Show text and widgets in the status bar.
+- ui.notify (low): Show toast notifications.
+- ui.panel (low): Add tabs to the right sidebar.
+- ui.modal (low): Ask you to confirm, type an answer or pick from a list.
+- ui.styles (medium): Add CSS to the app (for the plugin's own look).
+- settings.read (low): Read the plugin's own saved settings.
+- settings.write (low): Save the plugin's own settings.
+- assets.read (low): Read images and files attached to pages.
+- assets.write (low): Ask you to pick an image or file and import it.
+- workspaces.read (low): List workspaces and see which one is open.
+- workspaces.write (high): Create, rename and switch workspaces.
+- layout (low): Split panes, arrange sidebar tab groups, show or hide sidebars and resize panels.
+- appearance (medium): Change colors, fonts and component styles across the app.
+- preferences (medium): Read and change app preferences such as theme and font size.
+- commands.execute (high): Run any command from the command palette.
+- clipboard (medium): Read and write the clipboard.
+- network (high): Make web requests, search the web and fetch pages.
+- blocks (low): Add new kinds of blocks to the editor (rendered in a sandbox).
+- nodes (low): Add new kinds of items to the page tree (rendered in a sandbox).
+- home (medium): Create, change and remove Home views and widgets.
+
+
+---
+
+<!-- docs/plugins/README.md -->
+# Writing Noteral plugins
+
+Noteral plugins are small JavaScript bundles that run in a sandboxed iframe and talk to the app through a versioned API (**SDK 2.0.0**). A plugin can read and edit pages, query and reshape databases (views, filters, sorts, properties), add commands, sidebar tabs, status-bar widgets, editor blocks, page-tree item types and Home widgets, restyle the app, call the network, and react to events. It can do only what its manifest declares and the user approved.
+
+- **[Manifest](manifest.md)**: every `manifest.json` field
+- **[Extending the interface](ui.md)**: sidebar tabs, status-bar widgets, custom blocks, custom page types, Home, appearance layers, testing
+- **[Publishing](publishing.md)**: `npm run release` and `npm run submit`, using the GitHub CLI, GitHub Releases and the community registry
+- **[API reference](../sdk/api-reference.md)**: every method, event, permission and type, generated from the source
+- **[llms.txt](../sdk/llms.txt)** / **[llms-full.txt](../sdk/llms-full.txt)**: the same material for coding agents
+
+## How it fits together
+
+```
+manifest.json ──► Noteral checks id, version, sdkVersion, minAppVersion, permissions
+main.js       ──► loaded into a sandboxed <iframe sandbox="allow-scripts"> (no DOM access to the app,
+                  no Node, no same-origin storage). It talks to the app over postMessage:
+
+   this.app.pages.create({ title })  ─►  host: permission check → schema validation → handler
+                                     ◄─  result (or NoteralError with a code)
+```
+
+- Every call is checked against the permissions the user approved and validated against a JSON schema. A plugin cannot reach a method it didn't ask for.
+- A plugin that throws, hangs at startup (6 s) or in a command (30 s), or crashes its iframe is marked **failed** in *Plugins → Installed* and can be restarted. It cannot take the app down.
+- Disabling or uninstalling a plugin runs `onunload()`. It then removes every command, status item, panel, style and event listener the plugin registered.
+
+## Quick start
+
+```bash
+git clone https://github.com/neurh/noteral-plugins        # docs, SDK types, CLI, examples, registry
+node noteral-plugins/sdk/cli/noteral-plugin.mjs init my-plugin --github   # new public repo with a working plugin
+cd my-plugin
+npm run build                              # src/main.ts → main.js
+npm run check                              # the store's validation, locally
+zip my-plugin.zip manifest.json main.js    # add styles.css if you have one
+```
+
+In Noteral, open **Plugins** (puzzle icon in the left rail) → **Install from file**, then pick the zip. Review the permissions and approve. Rebuild and reinstall the zip to try a change. Installing the same id again replaces the plugin and keeps its saved data.
+
+The starter's `src/noteral.ts` maps the SDK that the host injects at runtime (`window.Noteral`), so a standalone repo builds without installing anything. In this repo, `examples/*` import `@noteral/sdk` directly, and `sdk/tsconfig.json` maps it to `sdk/src/index.ts`. For types in your own repo, point `paths` at a Noteral checkout (see `examples/starter/README.md`).
+
+## A complete plugin
+
+```ts
+import { Plugin, register } from "./noteral"; // or "@noteral/sdk" inside this repo
+
+interface Data { wpm: number }
+
+class ReadingTime extends Plugin {
+  private wpm = 230;
+
+  async onload() {
+    this.wpm = (await this.loadData<Data>()).wpm ?? 230;
+
+    this.addCommand({
+      id: "set-speed",
+      title: "Reading time: set reading speed",
+      run: async () => {
+        const answer = await this.app.ui.prompt({ title: "Words per minute", value: String(this.wpm) });
+        const wpm = Number(answer);
+        if (!answer || !Number.isFinite(wpm) || wpm < 50) return;
+        this.wpm = wpm;
+        await this.saveData<Data>({ wpm });
+        await this.refresh();
+      },
+    });
+
+    this.registerEvent("document:changed", () => void this.refresh());
+    this.registerEvent("page:opened", () => void this.refresh());
+    await this.refresh();
+  }
+
+  private async refresh() {
+    const doc = await this.app.editor.snapshot();
+    const minutes = doc ? Math.max(1, Math.round(doc.wordCount / this.wpm)) : 0;
+    await this.setStatus("reading-time", doc ? `${minutes} min read` : "", { title: `${this.wpm} wpm` });
+  }
+}
+
+register(ReadingTime);
+```
+
+The full version lives in `examples/reading-time/`. `examples/meeting-notes/` shows writing into pages. Neither ships with the app; they're examples to copy.
+
+## The `Plugin` class
+
+Extend `Plugin`, do your setup in `onload()`, and end the file with `register(YourPlugin)`. Everything registered through these helpers is disposed of automatically on unload.
+
+| Member | What it does | Needs |
+| --- | --- | --- |
+| `onload()` | Called once when the plugin starts. May be `async`; startup must finish within 6 s. | – |
+| `onunload()` | Called when the plugin is disabled, updated or uninstalled. Clean up anything you made yourself. | – |
+| `app` | The typed App API: `this.app.<namespace>.<method>(params)`. | per method |
+| `manifest` | Your parsed `manifest.json`. | – |
+| `addCommand({ id, title, description?, keywords?, run })` | Adds a command to the command palette (Ctrl/⌘ K) and the slash menu. `id` is local to your plugin. | – |
+| `registerEvent(name, handler)` | Subscribes to an app event (see below). Returns a disposer. | event's permission |
+| `registerInterval(fn, ms)` | `setInterval` that is cleared on unload. | – |
+| `register(disposer)` | Runs a function on unload. | – |
+| `setStatus(itemId, text, { title? })` | Sets a status-bar item. An empty string hides it. | `ui.status` |
+| `setPanel(panelId, { title?, markdown, actions? })` | Renders Markdown in a right-sidebar panel, with optional buttons. | `ui.panel` |
+| `onPanelAction(panelId, handler)` | Called with the action id when a panel button is pressed. | `ui.panel` |
+| `onViewMessage(handler)` | Called with `(name, payload, view)` when one of your [HTML views](ui.md) calls `noteral.post`. | – |
+| `addStyles(css)` | Injects CSS into the app. It is removed on unload. | `ui.styles` |
+| `notify(message, kind?)` | Shows a toast (`info`, `success`, `error`). | `ui.notify` |
+| `loadData()` / `saveData(patch)` | Per-plugin JSON storage on disk. | `settings.read` / `settings.write` |
+
+Status items and panels you want to show must also be declared under `contributes` in the manifest, so the user sees them in the review screen. Commands can be static (`contributes.commands`) or dynamic (`addCommand`). If both use the same id, `addCommand` supplies the handler.
+
+### Older plugins
+
+SDK 1.x plugins (`definePlugin((ctx) => { ... })`) still load. `ctx` keeps the old helpers (`ctx.commands.on`, `ctx.status.set`, `ctx.panels.set`, …), and `ctx.app` exposes the full 2.0 API. New plugins should use the class.
+
+## Calling the app
+
+```ts
+const page = await this.app.editor.getActive();            // ActivePage | null
+const md   = await this.app.editor.getMarkdown({});         // whole open page as Markdown
+await this.app.editor.insertMarkdown({ markdown: "## Notes\n\n- ", position: "cursor" });
+const hits = await this.app.search.query({ query: "roadmap", limit: 5 });
+const { id } = await this.app.pages.create({ title: "Retro", markdown: "# Retro", open: true });
+await this.app.databases.addRow({ databaseId, values: { Status: "Doing" } });
+```
+
+Every method takes **one object** of named parameters and returns a promise. The namespaces are `app`, `editor`, `pages`, `databases`, `workspaces`, `navigation`, `tabs`, `layout`, `search`, `assets`, `settings`, `preferences`, `appearance`, `commands`, `ui`, `clipboard` and `network`. See the [API reference](../sdk/api-reference.md) for each method's parameters, return type, permission and an example.
+
+Errors are `NoteralError` with a `code`:
+
+| code | meaning |
+| --- | --- |
+| `permission` | The manifest doesn't declare the method's permission, or the user didn't approve it. |
+| `invalid_params` | The parameters failed schema validation. The message names the field. |
+| `not_allowed` | The method isn't available to plugins, or the user declined a confirmation. |
+| `unknown_method` | No such method in this app version. Check `app.info()`'s `sdkVersion`. |
+| `cancelled`, `timeout`, `failed` | The user dismissed a dialog, the call took too long, or the handler failed. |
+
+```ts
+import { NoteralError } from "@noteral/sdk";
+try { await this.app.pages.moveToTrash({ pageId: id }); }
+catch (e) { if (e instanceof NoteralError && e.code === "not_allowed") return; throw e; }
+```
+
+Some calls (moving pages to the trash, opening another workspace, resetting the appearance) always ask the user to confirm, even with the permission granted.
+
+## Events
+
+| Event | Payload | Needs |
+| --- | --- | --- |
+| `document:changed` | `EditorSnapshot` (debounced) | `editor.read` |
+| `page:opened` | `ActivePage \| null` | – |
+| `theme:changed` | `{ theme: "light" \| "dark" }` | – |
+| `workspace:opened` | `WorkspaceInfo` | – |
+| `pages:changed` | `{ count }` | `pages.read` |
+| `panel:action` | `{ panelId, actionId }` | `ui.panel` |
+
+## Permissions
+
+Ask for the smallest set that works. The install screen lists each permission with its risk level, and an update that adds permissions asks again. The full vocabulary is in the [API reference](../sdk/api-reference.md#permissions); the common ones:
+
+- **Low**: `editor.read`, `navigation`, `layout`, `ui.status`, `ui.notify`, `ui.panel`, `ui.modal`, `settings.read`, `settings.write`, `assets.read`, `assets.write`, `workspaces.read`
+- **Medium**: `editor.write`, `pages.read`, `databases.read`, `search.read`, `ui.styles`, `appearance`, `preferences`, `clipboard`
+- **High**: `pages.write`, `databases.write`, `workspaces.write`, `commands.execute`, `network` (any HTTP request through the app, which can send data off the device)
+
+## Styling
+
+`addStyles(css)` (permission `ui.styles`) injects CSS. You can also ship a `styles.css` next to `main.js`, which is loaded the same way. Use the app's tokens so your UI follows light and dark mode: `var(--bg)`, `var(--bg-raised)`, `var(--text)`, `var(--text-soft)`, `var(--border)`, `var(--accent)`, `var(--radius-md)`, `var(--font-ui)`, `var(--font-reading)`. Call `this.app.appearance.listTokens({})` to see them all.
+
+## Debugging
+
+- *Plugins → Installed* shows a failed plugin's error and a **Restart** button.
+- `console.log` in your plugin goes to the app's developer console. In server mode (`go build -tags server`), open the app in a browser and use its devtools; each plugin is a separate iframe in the frame list.
+- A call that fails with `permission` names the missing permission in its message.
+
+## Security boundary
+
+- Code runs in `<iframe sandbox="allow-scripts">` with an opaque origin: no access to the app's DOM, cookies, storage or Wails bindings.
+- The host checks every request against the approved permissions and validates it against the method's schema before running it.
+- The iframe's CSP is `default-src 'none'`, so a plugin can't `fetch` anything itself. Network access goes through `network.request`, which needs the `network` permission and refuses localhost and private addresses.
+- Installed code is stored under the data directory (`plugins/<id>/`) and is never fetched again at runtime. Updates only happen when the user presses **Update**.
+
+---
+
+<!-- docs/plugins/manifest.md -->
+# manifest.json
+
+Every plugin ships a `manifest.json` next to its entry file. Noteral validates it on install and on every update. A manifest that fails validation is rejected with a message naming the field.
+
+```json
+{
+  "id": "com.example.reading-time",
+  "name": "Reading Time",
+  "version": "2.0.0",
+  "sdkVersion": "2.0.0",
+  "minAppVersion": "0.2.0",
+  "description": "Shows how long the open page takes to read.",
+  "author": "Ada Example",
+  "authorUrl": "https://example.com",
+  "repo": "ada/noteral-reading-time",
+  "entry": "main.js",
+  "permissions": ["editor.read", "ui.status", "settings.read", "settings.write"],
+  "contributes": {
+    "commands": [{ "id": "set-speed", "title": "Reading time: set reading speed", "keywords": "wpm words" }],
+    "statusItems": [{ "id": "reading-time", "label": "Reading time" }],
+    "panels": [{ "id": "reading-stats", "title": "Reading stats" }]
+  }
+}
+```
+
+## Fields
+
+| Field | Required | Rules |
+| --- | --- | --- |
+| `id` | yes | Reverse-domain, lowercase: `^[a-z][a-z0-9]*(\.[a-z0-9][a-z0-9-]*)+$`, at most 100 characters. **Never change it**: it is the key for updates and saved data. |
+| `name` | yes | Shown in the store, at most 80 characters. |
+| `version` | yes | Semver `MAJOR.MINOR.PATCH` (pre-release suffixes allowed). Updates compare this against the installed version. |
+| `sdkVersion` | yes | The SDK you built against. This app accepts majors **1** and **2**. Use `"2.0.0"`. |
+| `minAppVersion` | no | The oldest Noteral version that can run the plugin. Older apps refuse to install it and explain why. |
+| `description` | no | One or two sentences, at most 500 characters. |
+| `author`, `authorUrl` | no | Shown in the store and on the review screen. |
+| `repo` | for the community store | GitHub `owner/name` the releases come from. Must match the registry entry. |
+| `entry` | yes | The bundled script, normally `main.js`. One file; no imports at runtime. |
+| `permissions` | yes | Array from the vocabulary below. Use `[]` when you need none. Unknown names are rejected. |
+| `contributes` | no | Static UI surfaces, listed on the review screen (see below). |
+
+Older plugins may ship `plugin.json` instead of `manifest.json`. It is still read, but new plugins should use `manifest.json`.
+
+## `contributes`
+
+| Key | Entry fields | Notes |
+| --- | --- | --- |
+| `commands` | `id` (`^[a-z][a-z0-9-]{1,48}$`), `title`, `description?`, `keywords?` (a space-separated string) | Appear in the command palette and slash menu before the plugin loads. Handle them with `this.addCommand({ id, ... , run })` (same id). |
+| `statusItems` | `id`, `label`, `description?` | Space in the status bar, filled with `this.setStatus(id, text)`. |
+| `panels` | `id`, `title`, `description?` | A right-sidebar panel, filled with `this.setPanel(id, { markdown, actions })`. |
+
+Commands added only through `addCommand` don't need a manifest entry. Declaring them is still nice, because users see them before they install.
+
+## Permissions
+
+| Permission | Allows | Risk |
+| --- | --- | --- |
+| `editor.read` | Read the open page's text, blocks, selection; `document:changed` | low |
+| `editor.write` | Insert, replace, update and remove blocks in the open page | medium |
+| `pages.read` | List and read any page, favorites, recent, backlinks, trash | medium |
+| `pages.write` | Create, rename, move, duplicate, trash and restore pages; write content | high |
+| `databases.read` | List databases, read schemas, query rows | medium |
+| `databases.write` | Create databases, add properties, add/update rows | high |
+| `workspaces.read` | List workspaces and read the current one | low |
+| `workspaces.write` | Create, rename and switch workspaces (switching always asks the user) | high |
+| `navigation` | Open pages and Home, go back and forward, list and close tabs | low |
+| `layout` | Split panes, toggle panels, open overlays | low |
+| `search.read` | Full-text search across the workspace | medium |
+| `assets.read` / `assets.write` | Pick images and files through the system dialog | low |
+| `settings.read` / `settings.write` | The plugin's own saved data (`loadData` / `saveData`) | low |
+| `preferences` | Read and change app preferences (font size, width, …) | medium |
+| `appearance` | Change theme tokens, style components, add CSS | medium |
+| `commands.execute` | List and run app and plugin commands | high |
+| `clipboard` | Read and write clipboard text | medium |
+| `network` | HTTP requests through the app (no localhost or private ranges) | high |
+| `ui.status`, `ui.notify`, `ui.panel`, `ui.modal` | Status items, toasts, panels, confirm/prompt/pick dialogs | low |
+| `ui.styles` | Inject CSS into the app | medium |
+
+The generated [API reference](../sdk/api-reference.md) lists which methods each permission unlocks. Its source of truth is `PERMISSIONS` in `frontend/src/sdk-host/spec.ts`, and the Go validator (`internal/plugins/plugins.go`) mirrors the same list.
+
+## Release files
+
+A release (or a zip for *Install from file*) contains:
+
+| File | Required | Limit |
+| --- | --- | --- |
+| `manifest.json` | yes | 256 KB |
+| the `entry` file (`main.js`) | yes | 2 MB |
+| `styles.css` | no | 512 KB; loaded with the plugin, removed on unload |
+
+A zip for *Install from file* may hold at most 400 files and 20 MB, and each file at most 5 MB.
+
+---
+
+<!-- docs/plugins/ui.md -->
+# Extending the interface
+
+SDK 2 lets a plugin add real interface rather than only Markdown panels: right-sidebar tabs, status-bar widgets, editor blocks, page-tree item types and Home widgets. Each of these is an **HTML view**, a sandboxed iframe you fill with your own HTML, CSS and script. The assistant uses the same methods, so anything it can build, a plugin can build too.
+
+| Surface | Methods | Permission |
+| --- | --- | --- |
+| Right-sidebar tab | `sidebar.setTab`, `removeTab`, `openTab`, `setLayout`, `moveTab`, `list` | `ui.panel` (layout calls: `layout`) |
+| Status-bar widget | `statusBar.setWidget`, `removeWidget`, `list` | `ui.status` |
+| Editor block | `blocks.registerType`, `unregisterType`, `listTypes`, `insert`, `setData` | `blocks` (`insert`/`setData`: `editor.write`) |
+| Page-tree item type | `nodes.registerType`, `unregisterType`, `listTypes`, `create`, `getData`, `setData` | `nodes` (`create`/`setData`: `pages.write`) |
+| Home | `home.listViews`, `createView`, `updateView`, `setBackground`, `addWidget`, `updateWidget`, … | `home` |
+| Appearance | `appearance.setTokens`, `styleComponent`, `addCss`, `removeCss`, `reset`, `listLayers`, `setLayer` | `appearance` |
+| Database views | `databases.addView`, `updateView`, `queryView`, `updateProperty`, … | `databases.read` / `databases.write` |
+
+Everything a plugin contributes belongs to it. Disabling or uninstalling the plugin removes all of it, and none of it can touch another plugin's contributions.
+
+## A sidebar tab
+
+```ts
+import { Plugin, register } from "@noteral/sdk";
+
+class Tasks extends Plugin {
+  async onload() {
+    await this.app.sidebar.setTab({
+      id: "tasks",
+      title: "Tasks",
+      icon: "list-checks",           // any lucide icon name
+      html: `
+        <div class="n-col">
+          <h3>Open tasks</h3>
+          <ul class="n-list" id="list"></ul>
+          <button class="primary" id="refresh">Refresh</button>
+        </div>
+        <script>
+          async function load() {
+            const hits = await noteral.app.search.query({ query: "TODO", limit: 20 });
+            list.innerHTML = hits.map((h) => '<li><a data-id="' + h.pageId + '">' + h.title + '</a></li>').join("");
+          }
+          list.onclick = (e) => e.target.dataset.id && noteral.open(e.target.dataset.id);
+          refresh.onclick = load;
+          noteral.on("pages:changed", load);
+          load();
+        </script>`,
+      open: true,
+    });
+  }
+}
+register(Tasks);
+```
+
+`markdown` + `actions` still work for simple panels. Pass `split: true` to open the tab in a new stacked group under the current one. Users can drag tabs between groups. `sidebar.setLayout({ groups: [{ tabs: [...], size: 0.6 }, …] })` arranges them from code. Built-in tab keys are `outline`, `backlinks`, `info` and `assistant`. Contributed tabs are keyed `plugin:<pluginId>:<id>`.
+
+## The view runtime
+
+Every HTML view gets `window.noteral`:
+
+| Member | What it does |
+| --- | --- |
+| `noteral.props` | What the host passed in. Blocks, nodes and Home widgets get `{ data, … }`. |
+| `noteral.app.<ns>.<method>(params)` | The App API, limited to the owner's approved permissions. |
+| `noteral.setData(data)` | Saves the view's data. For blocks, nodes and Home widgets it is stored in the document. |
+| `noteral.onProps(fn)` / `onTheme(fn)` | Called when the data changes or when light/dark switches. |
+| `noteral.on(event, fn)` | App events (`document:changed`, `pages:changed`, …). |
+| `noteral.post(name, payload)` | Sends a message to your plugin, which receives it as the `view:message` event. |
+| `onMessage(fn)` | Receives `views.post(...)` messages from your plugin. |
+| `noteral.open(target)` | Opens a page id, `noteral://page/<id>` or an `https://` URL. |
+
+Views follow the app's theme automatically. Every token (`--bg`, `--text`, `--accent`, `--border`, `--radius-md`, `--font-ui`, …) is defined inside the frame. A small kit is also built in: `.n-card`, `.n-row`, `.n-col`, `.n-grid`, `.n-list`, `.n-chip`, `.n-muted`, `.n-faint`, and buttons with `.primary` / `.ghost`. Height follows the content unless the surface fills its space (custom page types).
+
+A view's iframe is `sandbox="allow-scripts"` and has a CSP with no network access. It can't reach the app's DOM, storage or the internet. Anything outside the frame goes through `noteral.app`.
+
+## Custom blocks
+
+```ts
+await this.app.blocks.registerType({
+  type: "counter",
+  title: "Counter",
+  description: "A number you can bump",
+  icon: "plus-circle",
+  defaultData: { count: 0 },
+  height: 64,
+  html: `<button class="primary" id="b"></button>
+    <script>
+      const paint = () => b.textContent = "Clicked " + (noteral.props.data.count || 0) + "×";
+      b.onclick = () => noteral.setData({ count: (noteral.props.data.count || 0) + 1 });
+      noteral.onProps(paint); paint();
+    </script>`,
+});
+```
+
+The block shows up in the slash menu under its title. Its data is saved in the page (as a `custom` BlockNote block with `kind` and JSON `data`), so it is exported and synced with the document. `blocks.insert({ type, data })` adds one from code.
+
+## Custom page types
+
+`nodes.registerType({ type, title, icon, html, defaultData })` adds an entry to the **New** menu in the page tree. Items of this type open full-height in your view, and `noteral.setData` persists their data (up to 1 MB). You can use this for boards, timers, sketches, dashboards, or anything that isn't a document.
+
+## Status-bar widgets
+
+```ts
+await this.app.statusBar.setWidget({ id: "clock", text: "12:00", icon: "clock", side: "right", order: 5 });
+// or a live HTML widget, 16–480 px wide:
+await this.app.statusBar.setWidget({ id: "pomodoro", html: "<span id=t>25:00</span><script>…</script>", width: 72 });
+```
+
+Set `command` on a text widget to run one of your commands when it's clicked.
+
+## Home
+
+Home views are grids of widgets on a background. With `home`, a plugin can create a view (`createView`), change its layout (`updateView`, including view-level `css`), set the background (presets, a solid color or a gradient), and add widgets. Widget types include notes, clocks, quick links, pages and an `html` widget, which is a view like the ones above and can persist its data. `home.widgetTypes()` lists them all.
+
+## Appearance layers
+
+Style changes are stored as **layers**, which the user can inspect, turn off or remove under *Plugins → Created*. A plugin's tokens, component styles and CSS go into its own layer, `plugin:<id>`, which is removed when the plugin is uninstalled.
+
+```ts
+await this.app.appearance.setTokens({ light: { accent: "#2f6f5e" }, dark: { accent: "#7cc4ae" } });
+await this.app.appearance.styleComponent({ component: "sidebar", rules: { background: "var(--bg-sunken)" } });
+```
+
+`appearance.listTokens()` and `appearance.listComponents()` return the names you can target.
+
+## Testing before you ship
+
+`plugins.test({ manifest, code, styles })` runs a plugin in a throwaway frame and reports `{ ok, error, logs, contributions }` without installing it. `plugins.logs({ id })` returns a running plugin's recent console output and errors. The assistant runs every plugin it writes through `plugins.test` before installing it, and it fixes and retries when the test fails.
+
+---
+
+<!-- docs/plugins/publishing.md -->
+# Publishing a plugin
+
+Community plugins live on GitHub, with nothing to host and no Noteral account:
+
+- **Your repo** holds the code. Each version is a **GitHub Release** with `manifest.json` and `main.js` (and optionally `styles.css`) attached as assets.
+- **The registry** is [`registry/community-plugins.json`](../../registry/community-plugins.json) in the public plugin hub, [neurh/noteral-plugins](https://github.com/neurh/noteral-plugins). It's a list of `{ id, name, author, description, repo, tags }`. You get listed through a pull request once. After that, every new release reaches users as an update.
+
+The `noteral-plugin` CLI does the whole thing through the [GitHub CLI](https://cli.github.com). It's one file with no dependencies, and every plugin repo keeps a copy in `scripts/noteral-plugin.mjs`.
+
+```
+init ─► build ─► check ─► release ─► submit ─► (maintainer merges) ─► in every Noteral's Community tab
+                            ▲                                              │
+                            └──────── later versions: release only ◄──────┘
+```
+
+## Before you start
+
+- Node 18 or newer.
+- `gh`, signed in: `gh auth login`. Releasing and submitting are done as you.
+- A **public** repo. Noteral downloads releases anonymously, so it can't install from a private repo.
+
+## 1. Create the plugin
+
+```sh
+git clone https://github.com/neurh/noteral-plugins
+node noteral-plugins/sdk/cli/noteral-plugin.mjs init word-goal --github
+cd word-goal
+```
+
+`init` asks for a name, id, description and author. Defaults come from your GitHub login and git config. Pass `--yes` to accept them all. It creates:
+
+```
+manifest.json                  id, version, permissions (editor.read, ui.notify to start)
+src/main.ts                    a Plugin with one command
+src/noteral.ts, src/sdk.d.ts   bindings to the runtime SDK (window.Noteral); keep as-is
+scripts/noteral-plugin.mjs     this CLI
+.github/workflows/release.yml  tag push → GitHub Release (an alternative to `release`)
+package.json                   npm run build | check | release | submit | status
+```
+
+It also makes the first commit. `--github` runs `gh repo create <you>/noteral-<name> --public --source . --push`. Without the flag, create the repo yourself and set `"repo"` in `manifest.json`.
+
+Copying `examples/starter` works too, since it ships the same script.
+
+## 2. Build and test locally
+
+```sh
+npm run build          # src/main.ts → main.js (esbuild, readable output; add -- --watch)
+npm run check          # validates manifest.json and main.js with the app's rules
+```
+
+To try it, zip `manifest.json` and `main.js`, then use **Plugins → Install from file** in Noteral. That runs the same validation and permission review as the store. Reinstall the zip after each change. Saved data stays, because the id stays.
+
+`check` prints what users will see on the approval screen:
+
+```
+Word Goal com.you.word-goal 0.1.0
+  manifest.json    286 B
+  main.js          1.1 KB
+  permissions
+    editor.read        low    Read the open page
+    ui.notify          low    Notifications
+✓ Ready to install
+```
+
+## 3. Release
+
+```sh
+npm run release              # next patch version (0.1.0 → 0.1.1; the first release uses 0.1.0)
+npm run release -- minor     # or major, or an exact version: -- 1.0.0
+```
+
+`release` checks that the working tree is clean, that the repo is public and that `manifest.json`'s `repo` matches the git remote. It bumps `version`, builds, runs `check --release` and shows you the plan. After you confirm, it commits, tags `<version>`, pushes, and runs `gh release create` with the assets and generated notes. If the repo's release workflow got there first, it uploads the assets with `--clobber` instead.
+
+| Option | |
+| --- | --- |
+| `--notes "…"` / `--notes-file FILE` | release notes (the store shows them on the update screen) |
+| `--draft` | create a draft; users don't see it until you publish it on GitHub |
+| `--allow-dirty` | release with uncommitted changes |
+| `--yes` | don't ask (CI) |
+
+Prefer CI? Bump `version` in `manifest.json`, commit, then `git tag 1.2.0 && git push origin 1.2.0`. The included workflow builds, checks that the tag matches the manifest, and publishes the release.
+
+## 4. Submit to the store (once)
+
+```sh
+npm run submit -- --dry-run       # shows the registry entry it would add
+npm run submit                    # opens the pull request
+npm run submit -- --tags writing,stats
+```
+
+`submit`:
+
+1. Reads your repo's **latest release** the way the app does: manifest asset, entry asset, sizes, matching `repo` and `id`. It stops if the release can't be installed.
+2. Builds your registry entry from the released `manifest.json`, then checks for id and repo conflicts with plugins that are already listed.
+3. Forks `neurh/noteral-plugins` to your account if you can't push to it. It reuses an existing fork without touching your other branches.
+4. Commits the one-entry change to a `plugin/<id>` branch through the GitHub API, so no clone is needed, and opens the pull request with your permissions and a checklist. If that pull request is already open, it updates it.
+
+Then the **registry bot** comments on the pull request:
+
+```
+✅ Word Goal com.you.word-goal (added)
+| Repo        | you/noteral-word-goal              |
+| Release     | 0.1.1 · 2026-11-24                 |
+| Assets      | manifest.json 286 B, main.js 1.1 KB |
+| Permissions | ⚪ editor.read ⚪ ui.notify          |
+```
+
+It labels the pull request `registry: ready` or `registry: needs changes`, and updates its comment each time you push or release again. A maintainer reads the source and merges it. The plugin then shows up in every Noteral's **Plugins → Community** tab.
+
+`npm run status` shows where you are: latest release, listed or not, and the open pull request.
+
+### Without the command line
+
+Open an issue with the **Submit a community plugin** form in [neurh/noteral-plugins](https://github.com/neurh/noteral-plugins/issues/new/choose) and enter your repo. The bot checks the latest release. If the release is fine, it opens the registry pull request for you. If it isn't, it comments with what to fix, and editing the issue runs the check again.
+
+## 5. Updates
+
+Run `npm run release` again. That's all: no pull request.
+
+- **Check for updates** in Noteral compares each installed plugin's version with its repo's latest release.
+- An update that **adds permissions** marks them *new*, and the user must approve them again. An update with the same permissions installs in one click.
+- Saved data (`saveData`) survives updates. Changing `id` creates a different plugin, so don't.
+- Set `minAppVersion` when you start using a newer API. Older apps then show "requires Noteral x.y.z" instead of installing something that fails.
+- Changing the name, description or tags in the store means running `npm run submit` again, which opens an update pull request.
+
+## What the checks enforce
+
+The CLI, the registry bot and the app share these rules. `sdk/cli/noteral-plugin.mjs` mirrors `internal/plugins`, and a test keeps the two in step.
+
+| Rule | |
+| --- | --- |
+| `id` | reverse-domain, lowercase: `com.you.plugin-name` (≤ 100 chars); final |
+| `version` | semver; the release tag should equal it (`1.2.0` or `v1.2.0`) |
+| `sdkVersion` | major 1 or 2 (current: 2.0.0) |
+| `permissions` | from the [list](manifest.md#permissions), no duplicates |
+| assets | `manifest.json` ≤ 256 KB, entry (top-level, default `main.js`) ≤ 2 MB, `styles.css` ≤ 512 KB |
+| repo | public, and the same as the manifest's `repo`; one plugin per repo |
+| registry entry | only `id, name, author, description, repo, tags`; ≤ 8 tags |
+
+The bot also flags things for the human reviewer: minified or obfuscated code, `eval`, long embedded base64, network calls without the `network` permission (or the reverse), a repo owned by someone other than the pull request's author, and a missing license. It records the entry file's SHA-256 in its comment.
+
+## Review checklist
+
+- [ ] `id` is final, and `version` matches the tag
+- [ ] the permission list is minimal: `network` only if the plugin really talks to a server, with the README explaining why
+- [ ] the released `main.js` is readable and built from the repo (the CLI doesn't minify)
+- [ ] works in light and dark (use CSS tokens, not hard-coded colors)
+- [ ] `onunload` cleans up anything not registered through the `Plugin` helpers
+- [ ] README with a screenshot, the permissions it asks for, and what data leaves the device (if any)
+
+## For maintainers
+
+- `.github/workflows/registry.yml` runs `registry/validate.mjs` on pushes and pull requests. The **review** job runs on `pull_request_target`, so it can comment on pull requests from forks. It checks out the base branch and reads only the pull request's `community-plugins.json`, as data. A weekly **audit** re-checks every listed plugin's latest release and writes the result to the run summary.
+- `.github/workflows/registry-submit.yml` handles the issue form. It needs *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests*.
+- Locally: `node registry/validate.mjs [--fix]`, `node registry/review.mjs --base old.json --head new.json`, `node registry/review.mjs --all`, `node --test registry/*.test.mjs`.
+- Removing a plugin is a pull request that deletes its entry. Installed copies keep working, but stop receiving updates.
+
+## Testing the store flow end to end
+
+Set the registry URL under *Community → Registry source*. Then start Noteral with `NOTERAL_GITHUB_BASE` (release downloads, default `https://github.com`) and `NOTERAL_GITHUB_API` (release notes, default `https://api.github.com`) pointing at a mirror or a local mock. `NOTERAL_GITHUB_API` also redirects `noteral-plugin`'s release checks and the registry bot.
+
+---
+
+<!-- docs/assistant.md -->
+# Assistant
+
+The assistant is an AI chat in the right sidebar (**Ctrl/⌘ J**, or the chat icon in the top bar). It reads and edits your notes, searches and reads the web, and in Creator mode it changes the app itself: theme, layout, component styles, preferences, and new plugins. It uses the same App API as plugins, so anything the [SDK](sdk/api-reference.md) can do, the assistant can do, within the limits of its mode.
+
+## Providers
+
+Connect a model under **Assistant → Settings** (the sliders icon). You bring your own key, or run a model locally:
+
+| Preset | Notes |
+| --- | --- |
+| Anthropic | Claude models via the Messages API |
+| OpenAI | Chat Completions API |
+| Google Gemini | AI Studio keys include a free tier |
+| OpenRouter | Hundreds of models behind one key, including free `:free` models |
+| Groq, Mistral, DeepSeek, xAI, Together AI | OpenAI-compatible endpoints |
+| Ollama, LM Studio | Local, free, private; no key |
+| Custom | Any OpenAI-compatible server (set the base URL, e.g. `http://localhost:8000/v1`) |
+
+- Keys are stored only on this computer, in `<data dir>/ai/providers.json` (file mode `0600`). The UI only ever sees a hint (`sk-…a1b2`), never the key.
+- Requests go from the app's backend straight to the provider. Noteral has no server in between.
+- **Load models** asks the provider for its model list. You can also type any model id in the model picker.
+
+## Modes
+
+The three-way switch in the composer decides which tools the model gets. The model can't call a tool that isn't sent to it, and the host checks the tier again on every call.
+
+| Mode | Tools | Use it for |
+| --- | --- | --- |
+| **Ask** | read-only: pages, blocks, selection, databases, search, backlinks, layout and appearance info, web search/fetch | questions, summaries, research |
+| **Edit** | Ask + content: write and restructure pages, insert/replace blocks, create and fill databases, open and close pages | drafting, rewriting, reorganizing |
+| **Creator** | Edit + app: theme tokens, component styles, custom CSS, layout, preferences, commands, workspaces, **create plugins** | making Noteral yours |
+
+### Approvals
+
+Under *Settings → Behaviour → Ask before*:
+
+- **Destructive actions only** (default): moving pages to the trash, switching or creating workspaces, resetting the appearance, and installing a generated plugin wait for an approval card in the chat.
+- **Every change**: every non-read call waits for approval. *Allow for this chat* skips the question for that tool until you start a new chat. Destructive actions always ask.
+
+Press **Esc** or the stop button to stop at any point. Tools that haven't run are marked as not run, and nothing half-finished is retried.
+
+### Creator mode and plugins
+
+In Creator mode the assistant can build interface as well as change settings: right-sidebar tabs (stacked in split groups), status-bar widgets, custom editor blocks, custom page types in the tree, Home views with HTML widgets and custom CSS, database views, filters, sorts and properties. These are the same methods plugins use, described in [Extending the interface](plugins/ui.md).
+
+When it writes a plugin with `plugins.create`, the assistant first runs it in a throwaway sandbox with `plugins.test`. If it throws or logs errors, the assistant reads the error, fixes the code and tests again. After installing, it checks the plugin's start-up health and reads `plugins.logs` when something fails. You see the name, permissions and size in an approval card. Approving installs it as **Made by assistant**.
+
+### Layers: turning changes on and off
+
+Every chat writes its appearance and interface changes into its own **layer** (`chat:<id>`): tokens, component styles, CSS snippets, sidebar tabs, status widgets, block and page types. *Plugins → Created* lists every layer with a summary. From there you can:
+
+- turn a layer (or all of them) off and on without losing it,
+- **Inspect** it: token swatches, each component style and CSS snippet (each can be toggled or removed), and what it added to the interface,
+- copy it as JSON, or remove it.
+
+Plugins the assistant made are listed on the same tab. `appearance.reset` (always confirmed) clears a layer or everything.
+
+## The composer
+
+- **@ mentions**: type `@` (or press the @ button) to attach the open page (listed first), other open tabs, any page, database or row, or the current selection. Mentioned content is sent with the message as context. You can also drag things onto the chat to mention them: pages from the tree, tabs, sidebar tabs, editor blocks (the six-dots handle), and database rows or cards.
+- **/ commands**: `/new`, `/retry`, `/compact` (summarise the chat so far into a fresh one), `/model`, `/think <level>`, `/web`, `/history`, `/settings`, `/ask`, `/edit`, `/creator`, and prompt shortcuts such as `/summarize`, `/explain`, `/todos`, `/fix`, `/rewrite`, `/translate <language>`, `/outline`, `/table`, `/theme`, `/plugin`, `/widget`, `/home`.
+- **Model and thinking**: the model button shows just the model name (the provider is in its tooltip and menu). The thinking chip next to it picks a level (Auto, Off, Low, Medium, High, Max) from the ones the model supports. It is sent as adaptive thinking + effort for current Claude models, a thinking budget for older Claude and Gemini 2.5, `thinkingLevel` for Gemini 3, and `reasoning_effort` for OpenAI reasoning models.
+- **Context ring**: shows how much of the model's context window the chat uses, from the provider's own token count plus an estimate for anything added since. Click it for the numbers and a *Compact chat* button.
+- **Questions**: with `ui.ask`, the assistant can stop and ask you to choose between options (or type an answer) inside the chat, and then continue.
+
+## Web search and fetch
+
+Both are free and need no API key:
+
+- **`web.search`** queries DuckDuckGo (HTML, then Lite) and falls back to Wikipedia. It returns titles, URLs and snippets, and the chat shows the sources under the tool row.
+- **`web.fetch`** downloads a page and extracts the readable text as Markdown (title, description, headings, lists, links), truncated to a character limit. JSON and plain text pass through.
+- Both refuse localhost and private network addresses. Turn web access off with the globe button in the composer; the web tools are then not sent to the model at all.
+
+## Settings
+
+| Setting | Default | |
+| --- | --- | --- |
+| Web access | on | Sends `web.search` / `web.fetch`. |
+| Max steps | 24 | Tool-call rounds per reply before the assistant pauses and asks you to continue. |
+| Max output tokens | 8192 | Per step. |
+| Temperature | provider default | |
+| Custom instructions | – | Appended to the system prompt in every mode. |
+
+**Settings → Models** lists the selected model, any you've customised, and the provider's models. For each one you can set the context window (default: what the provider reports, or a known size, otherwise 200k) and which thinking levels the picker offers. **Detect sizes** asks the provider for its context windows.
+
+Chats are saved as JSON in `<data dir>/ai/chats/` and listed under *History*.
+
+## For developers
+
+The assistant is built on the SDK spec, so it never needs its own copy of the API:
+
+- `frontend/src/sdk-host/spec.ts` declares every method once: name, summary, JSON-schema params, return type, permission, `tier` (`read` | `content` | `app`), `callers` (`plugin`, `assistant`) and `confirm`.
+- `frontend/src/assistant/tools.ts` turns the methods for a mode into tool definitions. The wire names replace `.` with `__` (`pages.create` → `pages__create`). It runs each call through `callMethod(..., { caller: "assistant" }, { tiers })`, the same path plugins use, without the permission layer but with the tier check.
+- **Adding a method to `spec.ts` and `handlers.ts` makes it a plugin API and an assistant tool at once.** `assistant/protocol.test.ts` fails if a method has no handler, a handler has no spec, or a wire name breaks provider naming rules.
+- `frontend/src/assistant/protocol.ts` builds request bodies and parses SSE for the three wire formats: OpenAI Chat Completions (also used by every OpenAI-compatible preset), Anthropic Messages (with prompt caching on the system prompt and tools), and Gemini `streamGenerateContent`. The Go side (`internal/ai`) only authenticates, streams raw SSE lines to the UI as `ai:stream` events, and supports cancellation, so adding a provider is mostly a parser change.
+- The system prompt (`assistant/prompt.ts`) states the mode's rules, the workspace and open page, and in Creator mode a guide to the appearance tokens and the plugin shape.
+
+### Agents writing code for Noteral
+
+Point coding agents at [`docs/sdk/llms.txt`](sdk/llms.txt) (index plus every method, one line each) or [`docs/sdk/llms-full.txt`](sdk/llms-full.txt) (all guides and the full reference in one file). Both are generated by `npm run plugins:build` from the spec, so they always match the app.
+
+---
+
+<!-- Generated by scripts/build-sdk.mjs from frontend/src/sdk-host/spec.ts. Do not edit. -->
+# App API reference (SDK 2.0.0)
+
+Every method below is callable from plugins as `this.app.<namespace>.<method>(params)` and,
+where marked, by the in-app assistant as a tool named `<namespace>_<method>`.
+All methods take one params object and return a promise.
+
+- **Permission** — what a plugin must declare in `manifest.json` (`none` = always allowed).
+- **Assistant modes** — Ask reads, Edit also changes content, Creator can change the whole app.
+- **Asks first** — the user confirms before it runs.
+
+## Contents
+
+- [`app`](#app)
+- [`editor`](#editor)
+- [`pages`](#pages)
+- [`databases`](#databases)
+- [`workspaces`](#workspaces)
+- [`navigation`](#navigation)
+- [`tabs`](#tabs)
+- [`layout`](#layout)
+- [`search`](#search)
+- [`assets`](#assets)
+- [`settings`](#settings)
+- [`preferences`](#preferences)
+- [`appearance`](#appearance)
+- [`commands`](#commands)
+- [`ui`](#ui)
+- [`clipboard`](#clipboard)
+- [`web`](#web)
+- [`network`](#network)
+- [`sidebar`](#sidebar)
+- [`statusBar`](#statusBar)
+- [`blocks`](#blocks)
+- [`nodes`](#nodes)
+- [`home`](#home)
+- [`views`](#views)
+- [`plugins`](#plugins)
+- [Events](#events)
+- [Permissions](#permissions)
+- [Types](#types)
+
+## app
+
+### `app.info`
+
+Get the app version, SDK version, theme and the open workspace.
+
+**Permission:** none · **Returns:** `AppInfo` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+```ts
+const info = await app.info();
+console.log(info.appVersion, info.theme);
+```
+
+## editor
+
+### `editor.getActive`
+
+Get the page open in the focused pane, or null when Home or nothing is open.
+
+**Permission:** `editor.read` · **Returns:** `ActivePage | null` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `editor.getMarkdown`
+
+Read the open page (or some of its blocks) as Markdown.
+
+Custom blocks such as embedded databases come out as a short placeholder.
+
+**Permission:** `editor.read` · **Returns:** `string` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+| `blockIds` | `string[]` |  | Block ids, from editor.getBlocks. |
+
+```ts
+const md = await app.editor.getMarkdown();
+```
+
+### `editor.getBlocks`
+
+List the open page's blocks with ids, types, text and nested children.
+
+Use the ids with editor.updateBlock, editor.replaceBlocks, editor.removeBlocks and editor.insertMarkdown.
+
+**Permission:** `editor.read` · **Returns:** `BlockSummary[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+### `editor.getSelection`
+
+Get the selected text, the selected block ids and the block with the cursor.
+
+**Permission:** `editor.read` · **Returns:** `EditorSelection` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+### `editor.snapshot`
+
+Get word count, block count, plain text and outline of the open page.
+
+**Permission:** `editor.read` · **Returns:** `EditorSnapshot | null` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `editor.insertMarkdown`
+
+Insert Markdown at the cursor, at the start or end, or before/after a block.
+
+**Permission:** `editor.write` · **Returns:** `{ blockIds: string[] }` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `markdown` | `string` | yes | Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported. |
+| `position` | `"cursor" \| "start" \| "end" \| "before" \| "after"` |  | Where to insert. 'before'/'after' need blockId. Default `"end"`. |
+| `blockId` | `string` |  | Anchor block for 'before'/'after'. |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+```ts
+await app.editor.insertMarkdown({ markdown: "## Summary\n- one\n- two", position: "end" });
+```
+
+### `editor.replaceBlocks`
+
+Replace blocks with new content parsed from Markdown.
+
+**Permission:** `editor.write` · **Returns:** `{ blockIds: string[] }` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `blockIds` | `string[]` | yes | Block ids, from editor.getBlocks. |
+| `markdown` | `string` | yes | Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported. |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+### `editor.updateBlock`
+
+Change one block's type, text or props (e.g. heading level, checked).
+
+Types: paragraph, heading (props.level 1-3), bulletListItem, numberedListItem, checkListItem (props.checked), quote, codeBlock (props.language).
+
+**Permission:** `editor.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `blockId` | `string` | yes | Block id. |
+| `type` | `string` |  | New block type. |
+| `text` | `string` |  | New plain text content. |
+| `props` | `Record<string, unknown>` |  | Block props to set. |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+### `editor.removeBlocks`
+
+Remove blocks from the open page.
+
+**Permission:** `editor.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `blockIds` | `string[]` | yes | Block ids, from editor.getBlocks. |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+### `editor.setMarkdown`
+
+Replace the whole open page with Markdown.
+
+Undoable with editor.undo. Prefer targeted edits for small changes.
+
+**Permission:** `editor.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `markdown` | `string` | yes | Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported. |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+### `editor.insertBlocks`
+
+Insert simple blocks after the cursor (SDK 1 shape).
+
+**Permission:** `editor.write` · **Returns:** `void` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `blocks` | `{ /** Block type. */ type: "paragraph" \| "heading" \| "bulletListItem" \| "numberedListItem" \| "checkListItem" \| "quote" \| "codeBlock"; /** Text. */ text?: string; /** Heading level. */ level?: number; /** Checklist state. */ checked?: boolean; }[]` | yes | Blocks to insert. |
+
+### `editor.undo`
+
+Undo the last edit in the open page.
+
+**Permission:** `editor.write` · **Returns:** `boolean` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+### `editor.redo`
+
+Redo the last undone edit in the open page.
+
+**Permission:** `editor.write` · **Returns:** `boolean` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+### `editor.scrollToBlock`
+
+Scroll the open page to a block.
+
+**Permission:** `editor.read` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `blockId` | `string` | yes | Block id. |
+| `pageId` | `string` |  | Page id. Defaults to the page open in the focused pane. |
+
+### `editor.openFind`
+
+Open the find bar (or find & replace) in the open page.
+
+**Permission:** `editor.read` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `replace` | `boolean` |  | Show the replace row. |
+
+## pages
+
+### `pages.list`
+
+List pages, folders and databases in the open workspace.
+
+Pass parentId "" for top-level items. Database rows are pages whose parent is the database.
+
+**Permission:** `pages.read` · **Returns:** `PageInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `parentId` | `string` |  | Only children of this item. "" = top level. |
+| `kind` | `"page" \| "folder" \| "database"` |  | Only this kind. |
+| `query` | `string` |  | Only titles containing this text (case-insensitive). |
+| `limit` | `number` |  | Maximum results. Default `500`. |
+| `includeRows` | `boolean` |  | Include database rows. Default `false`. |
+
+```ts
+const pages = await app.pages.list({ parentId: "" });
+```
+
+### `pages.get`
+
+Get one page's metadata.
+
+**Permission:** `pages.read` · **Returns:** `PageInfo` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+
+### `pages.read`
+
+Read any page's content as Markdown or plain text.
+
+**Permission:** `pages.read` · **Returns:** `PageContent` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+| `format` | `"markdown" \| "text"` |  | Output format. Default `"markdown"`. |
+
+### `pages.path`
+
+Get the breadcrumb path (ancestors, top first) of a page.
+
+**Permission:** `pages.read` · **Returns:** `PageInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+
+### `pages.favorites`
+
+List favorite pages.
+
+**Permission:** `pages.read` · **Returns:** `PageInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `pages.recent`
+
+List recently opened pages.
+
+**Permission:** `pages.read` · **Returns:** `PageInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `pages.backlinks`
+
+List pages that link to a page.
+
+**Permission:** `pages.read` · **Returns:** `PageInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+
+### `pages.trash`
+
+List trashed pages.
+
+**Permission:** `pages.read` · **Returns:** `PageInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `pages.create`
+
+Create a page or folder, optionally with Markdown content.
+
+**Permission:** `pages.write` · **Returns:** `PageInfo` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `title` | `string` |  | Title. |
+| `parentId` | `string` |  | Parent page or folder id. Omit for top level. |
+| `kind` | `"page" \| "folder"` |  | Item kind. |
+| `markdown` | `string` |  | Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported. |
+| `icon` | `string` |  | Emoji icon. |
+| `open` | `boolean` |  | Open it in a tab. Default `true`. |
+
+```ts
+const page = await app.pages.create({ title: "Weekly review", markdown: "## Wins\n- " });
+```
+
+### `pages.write`
+
+Replace a page's whole content with Markdown.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+| `markdown` | `string` | yes | Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported. |
+
+### `pages.append`
+
+Append Markdown to the end of a page.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+| `markdown` | `string` | yes | Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported. |
+
+### `pages.rename`
+
+Rename a page.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+| `title` | `string` | yes | New title. |
+
+### `pages.setIcon`
+
+Set a page's icon (an emoji, or "" to clear).
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+| `icon` | `string` | yes | Emoji or "". |
+
+### `pages.setCover`
+
+Set a page's cover: a CSS color/gradient, an image URL, or "" to clear.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+| `cover` | `string` | yes | Cover value. |
+
+### `pages.move`
+
+Move a page under another parent, optionally before a sibling.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+| `parentId` | `string` | yes | New parent id, "" for top level. |
+| `beforeId` | `string` |  | Sibling to place it before. |
+
+### `pages.duplicate`
+
+Duplicate a page with its sub-pages.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+| `open` | `boolean` |  | Open the copy. Default `false`. |
+
+### `pages.moveToTrash`
+
+Move a page (and its sub-pages) to the trash.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+
+### `pages.restore`
+
+Restore a page from the trash.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+
+### `pages.setFavorite`
+
+Add a page to favorites or remove it.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+| `favorite` | `boolean` | yes | Favorite or not. |
+
+## databases
+
+### `databases.list`
+
+List databases with their row counts.
+
+**Permission:** `databases.read` · **Returns:** `DatabaseInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `databases.getSchema`
+
+Get a database's properties (columns) and views.
+
+**Permission:** `databases.read` · **Returns:** `DatabaseSchemaInfo` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+
+### `databases.queryRows`
+
+Read a database's rows with values keyed by property name.
+
+Select/status values come back as option names. `where` matches exact values (case-insensitive for text).
+
+**Permission:** `databases.read` · **Returns:** `DatabaseRowInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `where` | `Record<string, unknown>` |  | Property name → value that must match. |
+| `limit` | `number` |  | Maximum rows. Default `200`. |
+
+```ts
+const rows = await app.databases.queryRows({ databaseId, where: { Status: "Done" } });
+```
+
+### `databases.create`
+
+Create a database with properties.
+
+Property types: text, number, select, multiSelect, status, date, checkbox, url, email, phone, createdTime, lastEdited.
+
+**Permission:** `databases.write` · **Returns:** `{ databaseId: string }` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `title` | `string` | yes | Database title. |
+| `parentId` | `string` |  | Parent page/folder id. |
+| `properties` | `{ /** Property name. */ name: string; /** Property type. */ type: "text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited"; /** Options for select / multiSelect / status. */ options?: string[]; }[]` |  | Columns besides the title. |
+| `view` | `"table" \| "board" \| "gallery" \| "list" \| "calendar"` |  | First view type. Default `"table"`. |
+| `open` | `boolean` |  | Open it in a tab. Default `true`. |
+
+### `databases.addProperty`
+
+Add a property (column) to a database.
+
+**Permission:** `databases.write` · **Returns:** `{ propertyId: string }` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `name` | `string` | yes | Property name. |
+| `type` | `"text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited"` | yes | Property type. |
+| `options` | `string[]` |  | Options for select / multiSelect / status. |
+
+### `databases.addRow`
+
+Add a row; values are keyed by property name.
+
+Dates: ISO "2026-03-01". Selects: option name (created if missing). Multi-select: array of names. Checkbox: boolean.
+
+**Permission:** `databases.write` · **Returns:** `{ rowId: string }` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `title` | `string` |  | Row title. |
+| `values` | `Record<string, unknown>` |  | Property name → value. |
+
+### `databases.updateRow`
+
+Change a row's title and/or values (keyed by property name).
+
+**Permission:** `databases.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `rowId` | `string` | yes | Row (page) id. |
+| `title` | `string` |  | New title. |
+| `values` | `Record<string, unknown>` |  | Property name → value. null clears. |
+
+### `databases.getView`
+
+Get one view with its filters, sorts, grouping, visible properties and calculations.
+
+**Permission:** `databases.read` · **Returns:** `DatabaseViewInfo` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `viewId` | `string` |  | View id (defaults to the first view). |
+
+### `databases.queryView`
+
+Read rows the way a view shows them (its filters and sorts applied), optionally with a search.
+
+**Permission:** `databases.read` · **Returns:** `DatabaseRowInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `viewId` | `string` |  | View id (defaults to the first view). |
+| `search` | `string` |  | Text search across all properties. |
+| `filters` | `{ /** Property name or id ("title" or the title column's name for the title). */ property: string; /** Operator. */ op: "contains" \| "notContains" \| "is" \| "isNot" \| "startsWith" \| "endsWith" \| "isEmpty" \| "isNotEmpty" \| "eq" \| "neq" \| "gt" \| "lt" \| "gte" \| "lte" \| "before" \| "after" \| "onOrBefore" \| "onOrAfter"; /** Value to compare with (omit for isEmpty / isNotEmpty). */ value?: unknown; }[]` |  | Filter rules (replaces the view's filters). Select/status/multi-select values are option names; dates are ISO. |
+| `filterMode` | `"and" \| "or"` |  | and \| or for `filters`. |
+| `sorts` | `{ /** Property name or id ("title" or the title column's name for the title). */ property: string; /** Direction. */ direction?: "asc" \| "desc"; }[]` |  | Sort rules, first wins (replaces the view's sorts). |
+| `limit` | `number` |  | Maximum rows. Default `200`. |
+
+```ts
+const late = await app.databases.queryView({ databaseId, filters: [{ property: "Due", op: "before", value: "2026-01-01" }], sorts: [{ property: "Due" }] });
+```
+
+### `databases.addView`
+
+Add a view (table, board, gallery, list or calendar) with optional filters, sorts and grouping.
+
+**Permission:** `databases.write` · **Returns:** `DatabaseViewInfo` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `name` | `string` |  | View name. |
+| `type` | `"table" \| "board" \| "gallery" \| "list" \| "calendar"` |  | Layout. Default `"table"`. |
+| `filters` | `{ /** Property name or id ("title" or the title column's name for the title). */ property: string; /** Operator. */ op: "contains" \| "notContains" \| "is" \| "isNot" \| "startsWith" \| "endsWith" \| "isEmpty" \| "isNotEmpty" \| "eq" \| "neq" \| "gt" \| "lt" \| "gte" \| "lte" \| "before" \| "after" \| "onOrBefore" \| "onOrAfter"; /** Value to compare with (omit for isEmpty / isNotEmpty). */ value?: unknown; }[]` |  | Filter rules (replaces the view's filters). Select/status/multi-select values are option names; dates are ISO. |
+| `filterMode` | `"and" \| "or"` |  | Match all rules (and) or any (or). |
+| `sorts` | `{ /** Property name or id ("title" or the title column's name for the title). */ property: string; /** Direction. */ direction?: "asc" \| "desc"; }[]` |  | Sort rules, first wins (replaces the view's sorts). |
+| `groupBy` | `string` |  | Board/table grouping property (select, multi-select, status, checkbox). "" removes grouping. |
+| `hiddenGroups` | `string[]` |  | Group values (option names) to hide on a board. |
+| `show` | `string[]` |  | Properties to show, in order (others are hidden). |
+| `hide` | `string[]` |  | Properties to hide. |
+| `order` | `string[]` |  | Property order (names or ids). |
+| `widths` | `Record<string, number>` |  | Property → column width in px (table). |
+| `calcs` | `Record<string, "none" \| "countAll" \| "countValues" \| "countUnique" \| "countEmpty" \| "countNotEmpty" \| "percentEmpty" \| "percentNotEmpty" \| "checked" \| "unchecked" \| "percentChecked" \| "sum" \| "average" \| "median" \| "min" \| "max" \| "range" \| "earliest" \| "latest">` |  | Property → footer calculation (table). |
+| `dateProperty` | `string` |  | Date property for calendar views. |
+| `cardPreview` | `"cover" \| "none"` |  | Card preview for board/gallery. |
+| `wrap` | `boolean` |  | Wrap long cell text. |
+
+```ts
+await app.databases.addView({ databaseId, type: "board", name: "By status", groupBy: "Status", filters: [{ property: "Done", op: "is", value: false }] });
+```
+
+### `databases.updateView`
+
+Change a view: name, layout, filters, sorts, grouping, visible properties, order, widths, calculations.
+
+Only the fields you pass change. `filters` and `sorts` replace the existing lists; pass [] to clear.
+
+**Permission:** `databases.write` · **Returns:** `DatabaseViewInfo` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `viewId` | `string` | yes | View id. |
+| `name` | `string` |  | View name. |
+| `type` | `"table" \| "board" \| "gallery" \| "list" \| "calendar"` |  | Layout. |
+| `filters` | `{ /** Property name or id ("title" or the title column's name for the title). */ property: string; /** Operator. */ op: "contains" \| "notContains" \| "is" \| "isNot" \| "startsWith" \| "endsWith" \| "isEmpty" \| "isNotEmpty" \| "eq" \| "neq" \| "gt" \| "lt" \| "gte" \| "lte" \| "before" \| "after" \| "onOrBefore" \| "onOrAfter"; /** Value to compare with (omit for isEmpty / isNotEmpty). */ value?: unknown; }[]` |  | Filter rules (replaces the view's filters). Select/status/multi-select values are option names; dates are ISO. |
+| `filterMode` | `"and" \| "or"` |  | Match all rules (and) or any (or). |
+| `sorts` | `{ /** Property name or id ("title" or the title column's name for the title). */ property: string; /** Direction. */ direction?: "asc" \| "desc"; }[]` |  | Sort rules, first wins (replaces the view's sorts). |
+| `groupBy` | `string` |  | Board/table grouping property (select, multi-select, status, checkbox). "" removes grouping. |
+| `hiddenGroups` | `string[]` |  | Group values (option names) to hide on a board. |
+| `show` | `string[]` |  | Properties to show, in order (others are hidden). |
+| `hide` | `string[]` |  | Properties to hide. |
+| `order` | `string[]` |  | Property order (names or ids). |
+| `widths` | `Record<string, number>` |  | Property → column width in px (table). |
+| `calcs` | `Record<string, "none" \| "countAll" \| "countValues" \| "countUnique" \| "countEmpty" \| "countNotEmpty" \| "percentEmpty" \| "percentNotEmpty" \| "checked" \| "unchecked" \| "percentChecked" \| "sum" \| "average" \| "median" \| "min" \| "max" \| "range" \| "earliest" \| "latest">` |  | Property → footer calculation (table). |
+| `dateProperty` | `string` |  | Date property for calendar views. |
+| `cardPreview` | `"cover" \| "none"` |  | Card preview for board/gallery. |
+| `wrap` | `boolean` |  | Wrap long cell text. |
+
+### `databases.removeView`
+
+Remove a view (a database keeps at least one).
+
+**Permission:** `databases.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `viewId` | `string` | yes | View id. |
+
+### `databases.duplicateView`
+
+Copy a view with all its settings.
+
+**Permission:** `databases.write` · **Returns:** `DatabaseViewInfo` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `viewId` | `string` | yes | View id. |
+| `name` | `string` |  | Name of the copy. |
+
+### `databases.moveView`
+
+Move a view to another position in the view tabs.
+
+**Permission:** `databases.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `viewId` | `string` | yes | View id. |
+| `index` | `number` | yes | New position (0 = first). |
+
+### `databases.updateProperty`
+
+Rename a property, change its type, number format or select options.
+
+`options` replaces the option list for select / multi-select / status; existing options keep their ids when the name matches. Changing the type converts existing values where possible.
+
+**Permission:** `databases.write` · **Returns:** `DatabaseSchemaInfo` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `property` | `string` | yes | Property name or id ("title" or the title column's name for the title). |
+| `name` | `string` |  | New name. |
+| `type` | `"text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited"` |  | New type. |
+| `format` | `"number" \| "commas" \| "percent" \| "dollar" \| "euro" \| "pound" \| "yen"` |  | Number format. |
+| `options` | `{ /** Option name. */ name: string; /** Color name. */ color?: "default" \| "gray" \| "brown" \| "orange" \| "yellow" \| "green" \| "blue" \| "purple" \| "pink" \| "red"; /** Status group. */ group?: "todo" \| "inProgress" \| "complete"; }[]` |  | Options (select / multi-select / status). |
+
+### `databases.removeProperty`
+
+Delete a property and its values from every row.
+
+**Permission:** `databases.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `property` | `string` | yes | Property name or id ("title" or the title column's name for the title). |
+
+### `databases.deleteRows`
+
+Move rows to the trash.
+
+**Permission:** `databases.write` · **Returns:** `{ deleted: number }` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `rowIds` | `string[]` | yes | Row ids. |
+
+### `databases.rename`
+
+Rename a database or its title column.
+
+**Permission:** `databases.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `databaseId` | `string` | yes | Database id. |
+| `title` | `string` |  | New database title. |
+| `titleColumn` | `string` |  | New name of the title column. |
+
+## workspaces
+
+### `workspaces.list`
+
+List workspaces.
+
+**Permission:** `workspaces.read` · **Returns:** `WorkspaceInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `workspaces.current`
+
+Get the open workspace.
+
+**Permission:** `workspaces.read` · **Returns:** `WorkspaceInfo | null` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `workspaces.open`
+
+Switch to another workspace.
+
+**Permission:** `workspaces.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `workspaceId` | `string` | yes | Workspace id. |
+
+### `workspaces.create`
+
+Create a workspace and switch to it.
+
+**Permission:** `workspaces.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `name` | `string` | yes | Name. |
+
+### `workspaces.rename`
+
+Rename a workspace.
+
+**Permission:** `workspaces.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `workspaceId` | `string` | yes | Workspace id. |
+| `name` | `string` | yes | New name. |
+
+## navigation
+
+### `navigation.openPage`
+
+Open a page in the focused pane.
+
+**Permission:** `navigation` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Page id. |
+
+### `navigation.openHome`
+
+Open a Home tab.
+
+**Permission:** `navigation` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `navigation.back`
+
+Go back in history.
+
+**Permission:** `navigation` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `navigation.forward`
+
+Go forward in history.
+
+**Permission:** `navigation` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+## tabs
+
+### `tabs.list`
+
+List open tabs (page tabs and Home tabs).
+
+**Permission:** `navigation` · **Returns:** `TabInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `tabs.close`
+
+Close a tab.
+
+**Permission:** `navigation` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `tabId` | `string` | yes | Tab id (a page id or a Home tab id). |
+
+## layout
+
+### `layout.get`
+
+Get panes, sidebars and their sizes.
+
+**Permission:** `layout` · **Returns:** `LayoutInfo` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `layout.split`
+
+Split a pane; the new pane opens Home.
+
+**Permission:** `layout` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `paneId` | `string` |  | Pane id. Defaults to the focused pane. |
+| `side` | `"left" \| "right" \| "top" \| "bottom"` | yes | Side of the new pane. |
+
+### `layout.closePane`
+
+Close a pane and its tabs.
+
+**Permission:** `layout` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `paneId` | `string` | yes | Pane id. |
+
+### `layout.toggleMaximize`
+
+Maximize a pane or restore it.
+
+**Permission:** `layout` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `paneId` | `string` |  | Pane id. Defaults to the focused pane. |
+
+### `layout.setPanels`
+
+Show/hide the sidebars and rail, resize them, or switch their tabs.
+
+**Permission:** `layout` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `leftOpen` | `boolean` |  | Show the left sidebar. |
+| `rightOpen` | `boolean` |  | Show the right sidebar. |
+| `railOpen` | `boolean` |  | Show the rail. |
+| `leftWidth` | `number` |  | Left sidebar width (220–420). |
+| `rightWidth` | `number` |  | Right sidebar width (240–440). |
+| `leftTab` | `"tree" \| "favorites" \| "recent" \| "trash"` |  | Left sidebar tab. |
+| `rightTab` | `"outline" \| "backlinks" \| "info" \| "assistant"` |  | Right sidebar tab. |
+
+### `layout.openOverlay`
+
+Open an app dialog (command palette, library, plugins, settings, workspaces) or close it.
+
+**Permission:** `layout` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `overlay` | `"palette" \| "library" \| "plugins" \| "settings" \| "workspaces" \| "none"` | yes | Dialog to open; "none" closes. |
+
+## search
+
+### `search.query`
+
+Full-text search across the open workspace.
+
+**Permission:** `search.read` · **Returns:** `SearchHitInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `query` | `string` | yes | Search text. |
+| `limit` | `number` |  | Maximum hits. Default `20`. |
+
+## assets
+
+### `assets.pickImage`
+
+Ask the user to pick an image; returns its URL.
+
+**Permission:** `assets.write` · **Returns:** `string | null` · **Callers:** plugins
+
+No parameters.
+
+### `assets.pickFile`
+
+Ask the user to pick a file; returns its URL.
+
+**Permission:** `assets.write` · **Returns:** `string | null` · **Callers:** plugins
+
+No parameters.
+
+## settings
+
+### `settings.get`
+
+Read the plugin's saved settings.
+
+**Permission:** `settings.read` · **Returns:** `Record<string, unknown>` · **Callers:** plugins
+
+No parameters.
+
+### `settings.set`
+
+Merge a patch into the plugin's saved settings.
+
+**Permission:** `settings.write` · **Returns:** `Record<string, unknown>` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `patch` | `Record<string, unknown>` | yes | Keys to set; null removes. |
+
+## preferences
+
+### `preferences.get`
+
+Read app preferences (theme, fonts, page width, autosave, …).
+
+**Permission:** `preferences` · **Returns:** `Preferences` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `preferences.update`
+
+Change app preferences.
+
+**Permission:** `preferences` · **Returns:** `Preferences` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `theme` | `"light" \| "dark" \| "system"` |  | Theme. |
+| `editorFont` | `"serif" \| "sans"` |  | Reading font. |
+| `fontSize` | `number` |  | Editor font size (15–20). |
+| `lineHeight` | `number` |  | Editor line height (1.45–1.9). |
+| `pageWidth` | `number` |  | Page width in px (640–900). |
+| `fullWidth` | `boolean` |  | Use the full pane width. |
+| `autosaveDelay` | `number` |  | Autosave delay in ms (300–2000). |
+| `spellcheck` | `boolean` |  | Spellcheck. |
+| `reduceMotion` | `boolean` |  | Reduce motion. |
+| `showStats` | `boolean` |  | Show word count in the status bar. |
+
+## appearance
+
+### `appearance.get`
+
+Get the current customizations (tokens, CSS snippets, component styles).
+
+**Permission:** `appearance` · **Returns:** `Customizations` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `appearance.listTokens`
+
+List the design tokens with their default light and dark values.
+
+**Permission:** `appearance` · **Returns:** `TokenInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `appearance.listComponents`
+
+List the app components that can be styled or hidden.
+
+**Permission:** `appearance` · **Returns:** `ComponentInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `appearance.setTokens`
+
+Override design tokens (colors, fonts, radii, sizes) for light and/or dark.
+
+Keys are token names without the leading dashes, e.g. { accent: "#2f6fdf", "radius-md": "12px" }. A null value removes an override.
+
+**Permission:** `appearance` · **Returns:** `Customizations` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `light` | `Record<string, unknown>` |  | Token → CSS value for the light theme. |
+| `dark` | `Record<string, unknown>` |  | Token → CSS value for the dark theme. |
+| `both` | `Record<string, unknown>` |  | Token → CSS value for both themes. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+```ts
+await app.appearance.setTokens({ both: { accent: "#2f6fdf" }, dark: { bg: "#111418" } });
+```
+
+### `appearance.styleComponent`
+
+Style or hide an app component (see appearance.listComponents).
+
+`css` is a list of declarations applied to the component's root, e.g. "border-radius: 16px; background: var(--bg-sunken)". Use `rules` for nested selectors.
+
+**Permission:** `appearance` · **Returns:** `Customizations` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `component` | `string` | yes | Component id. |
+| `css` | `string` |  | CSS declarations for the component root. "" clears. |
+| `rules` | `string` |  | Extra CSS rules; `&` is replaced by the component selector. |
+| `hidden` | `boolean` |  | Hide the component. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `appearance.addCss`
+
+Add or replace a named CSS snippet applied to the whole app.
+
+**Permission:** `appearance` · **Returns:** `Customizations` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Snippet id (letters, digits, dashes). |
+| `css` | `string` | yes | CSS. |
+| `label` | `string` |  | Human label. |
+| `enabled` | `boolean` |  | Enabled. Default `true`. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `appearance.removeCss`
+
+Remove a CSS snippet.
+
+**Permission:** `appearance` · **Returns:** `Customizations` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Snippet id. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `appearance.reset`
+
+Reset customizations (all, or only tokens, CSS snippets or component styles).
+
+**Permission:** `appearance` · **Returns:** `Customizations` · **Callers:** plugins, assistant · **Assistant modes:** Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `scope` | `"all" \| "tokens" \| "css" \| "components"` |  | What to reset. Default `"all"`. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `appearance.listLayers`
+
+List customization layers: switchable bundles of looks, sidebar tabs, status widgets, block and page types.
+
+The assistant writes each chat's changes to its own layer; plugins get one too. Users manage them in Plugins → Created.
+
+**Permission:** `appearance` · **Returns:** `LayerInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `appearance.setLayer`
+
+Create a layer or change its name, description or on/off state.
+
+**Permission:** `appearance` · **Returns:** `LayerInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Layer id (lowercase letters, digits, dots, dashes, colons). |
+| `name` | `string` |  | Name. |
+| `description` | `string` |  | What it changes. |
+| `enabled` | `boolean` |  | On or off. |
+
+### `appearance.setLayerPermissions`
+
+Set the App API permissions a layer's HTML views (tabs, widgets, blocks, pages) run with.
+
+By default layer views can read pages, databases and the editor, navigate and notify. Granting write permissions lets their scripts change content.
+
+**Permission:** `appearance` · **Returns:** `LayerInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Layer id. |
+| `permissions` | `string[]` | yes | Permission ids. |
+
+### `appearance.removeLayer`
+
+Delete a layer and everything it adds.
+
+**Permission:** `appearance` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Layer id. |
+
+## commands
+
+### `commands.list`
+
+List every command in the command palette.
+
+**Permission:** none · **Returns:** `CommandInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `query` | `string` |  | Filter by title or category. |
+
+### `commands.execute`
+
+Run a command by id.
+
+**Permission:** `commands.execute` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Command id. |
+
+## ui
+
+### `ui.notify`
+
+Show a toast notification.
+
+**Permission:** `ui.notify` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `message` | `string` | yes | Message. |
+| `kind` | `"info" \| "success" \| "error"` |  | Tone. Default `"info"`. |
+
+### `ui.confirm`
+
+Ask the user to confirm something.
+
+**Permission:** `ui.modal` · **Returns:** `boolean` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `title` | `string` | yes | Title. |
+| `message` | `string` |  | Message. |
+| `confirmLabel` | `string` |  | Confirm button label. |
+| `danger` | `boolean` |  | Destructive styling. |
+
+### `ui.prompt`
+
+Ask the user to type a value. Resolves to null when cancelled.
+
+**Permission:** `ui.modal` · **Returns:** `string | null` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `title` | `string` | yes | Title. |
+| `message` | `string` |  | Message. |
+| `placeholder` | `string` |  | Placeholder. |
+| `value` | `string` |  | Initial value. |
+| `multiline` | `boolean` |  | Multi-line input. |
+
+### `ui.pick`
+
+Ask the user to pick one item from a list. Resolves to the id or null.
+
+**Permission:** `ui.modal` · **Returns:** `string | null` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `title` | `string` | yes | Title. |
+| `items` | `{ /** Id. */ id: string; /** Label. */ label: string; /** Hint. */ description?: string; }[]` | yes | Choices. |
+
+### `ui.ask`
+
+Ask the user a question with choices and/or a free-text answer, and wait for the reply.
+
+For the assistant this renders an inline question card in the chat; for plugins a dialog. Use it to clarify requirements or let the user choose between options instead of guessing. Returns { answer, choices, cancelled }.
+
+**Permission:** `ui.modal` · **Returns:** `AskResult` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `question` | `string` | yes | The question. |
+| `options` | `{ /** Choice label. */ label: string; /** One-line explanation. */ description?: string; }[]` |  | Choices. |
+| `multiple` | `boolean` |  | Allow picking several choices. Default `false`. |
+| `allowText` | `boolean` |  | Allow a typed answer (always on when there are no options). Default `true`. |
+| `placeholder` | `string` |  | Placeholder for the typed answer. |
+
+### `ui.setStatus`
+
+Show text in the status bar (declare the item in manifest.contributes.statusItems or by id).
+
+**Permission:** `ui.status` · **Returns:** `void` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `itemId` | `string` | yes | Status item id. |
+| `text` | `string` | yes | Text; "" hides it. |
+| `title` | `string` |  | Tooltip. |
+
+### `ui.setPanel`
+
+Render a sidebar panel from Markdown, with optional action buttons.
+
+Buttons raise the panel:action event with the action id.
+
+**Permission:** `ui.panel` · **Returns:** `void` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `panelId` | `string` | yes | Panel id. |
+| `title` | `string` |  | Panel title. |
+| `markdown` | `string` | yes | Panel content. |
+| `actions` | `{ /** Action id. */ id: string; /** Label. */ label: string; /** Primary style. */ primary?: boolean; }[]` |  | Buttons. |
+
+### `ui.addStyles`
+
+Add CSS for the plugin's own look (replaces the plugin's previous styles).
+
+**Permission:** `ui.styles` · **Returns:** `void` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `css` | `string` | yes | CSS. |
+
+## clipboard
+
+### `clipboard.readText`
+
+Read text from the clipboard.
+
+**Permission:** `clipboard` · **Returns:** `string` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `clipboard.writeText`
+
+Copy text to the clipboard.
+
+**Permission:** `clipboard` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `text` | `string` | yes | Text. |
+
+## web
+
+### `web.search`
+
+Search the web (free, no API key). Returns titles, URLs and snippets.
+
+Uses DuckDuckGo with Wikipedia as a fallback. Fetch a result's URL with web.fetch to read it.
+
+**Permission:** `network` · **Returns:** `WebSearchResult` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `query` | `string` | yes | Search query. |
+| `limit` | `number` |  | Maximum results. Default `8`. |
+
+### `web.fetch`
+
+Fetch a web page and return its readable text, title and links.
+
+**Permission:** `network` · **Returns:** `WebPage` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `url` | `string` | yes | http(s) URL. |
+| `maxChars` | `number` |  | Maximum characters of text. Default `20000`. |
+
+## network
+
+### `network.request`
+
+Make an HTTP request (any method, headers and body) through the app.
+
+Requests to localhost and private networks are blocked. Bodies are text; binary responses come back base64 encoded.
+
+**Permission:** `network` · **Returns:** `HttpResponse` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `url` | `string` | yes | http(s) URL. |
+| `method` | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE" \| "HEAD"` |  | HTTP method. Default `"GET"`. |
+| `headers` | `Record<string, string>` |  | Request headers. |
+| `body` | `string` |  | Request body. |
+
+## sidebar
+
+### `sidebar.list`
+
+List the right sidebar's tab groups (stacked panels) and every available tab.
+
+**Permission:** none · **Returns:** `SidebarInfo` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `sidebar.setTab`
+
+Add or update a right-sidebar tab with Markdown (+ buttons) or a full HTML view.
+
+Tabs from plugins live while the plugin runs; tabs from the assistant are saved in the chat's customization layer. A new tab is added to the first group unless `group` says otherwise; `split: true` opens it in a new group below.
+
+**Permission:** `ui.panel` · **Returns:** `SidebarTabInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Tab id, unique for this plugin or layer (letters, digits, dots, dashes). |
+| `title` | `string` | yes | Tab title. |
+| `icon` | `string` |  | Icon: an emoji or a Lucide icon name such as "chart-line". |
+| `markdown` | `string` |  | Markdown content. |
+| `actions` | `{ /** Action id. */ id: string; /** Label. */ label: string; /** Primary style. */ primary?: boolean; }[]` |  | Buttons under Markdown content; pressing one raises panel:action (plugins). |
+| `html` | `string` |  | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `open` | `boolean` |  | Show the sidebar and activate the tab. Default `false`. |
+| `split` | `boolean` |  | Open in a new group below the others. Default `false`. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+```ts
+await app.sidebar.setTab({ id: "tasks", title: "Tasks", icon: "list-checks", html: "<ul id=list class=n-list></ul><script>noteral.app.databases.queryRows({databaseId:'…'}).then(r=>list.innerHTML=r.map(x=>'<li>'+x.title).join(''))</script>", open: true });
+```
+
+### `sidebar.removeTab`
+
+Remove a tab added with sidebar.setTab.
+
+**Permission:** `ui.panel` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Tab id. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `sidebar.openTab`
+
+Show the right sidebar and activate a tab (built-in: outline, backlinks, info, assistant).
+
+**Permission:** `layout` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Tab id or key (see sidebar.list). |
+| `split` | `boolean` |  | Move it into a new group below. Default `false`. |
+
+### `sidebar.setLayout`
+
+Arrange the right sidebar: stacked groups of tabs, their order, sizes and active tabs.
+
+Each group is a panel with its own tab strip; groups stack top to bottom and `size` is a relative height. Tabs not listed stay in the last group.
+
+**Permission:** `layout` · **Returns:** `SidebarInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `groups` | `{ /** Tab keys in order. */ tabs: string[]; /** Active tab key. */ active?: string; /** Relative height (default 1). */ size?: number; }[]` | yes | Groups, top to bottom (max 6). |
+| `width` | `number` |  | Sidebar width in px. |
+
+### `sidebar.moveTab`
+
+Move a tab to another group (or a new group) and position.
+
+**Permission:** `layout` · **Returns:** `SidebarInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Tab key. |
+| `group` | `number` | yes | Target group index; -1 = new group at the bottom. |
+| `index` | `number` |  | Position in the group. |
+
+## statusBar
+
+### `statusBar.list`
+
+List status bar widgets (built-in and custom).
+
+**Permission:** none · **Returns:** `StatusWidgetInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `statusBar.setWidget`
+
+Add or update a status bar widget: text with an icon and click command, or a small HTML view.
+
+HTML widgets render in a 22px-high sandboxed frame (`width` px wide) and can call the App API with the owner's permissions.
+
+**Permission:** `ui.status` · **Returns:** `StatusWidgetInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Widget id. |
+| `text` | `string` |  | Text. |
+| `tooltip` | `string` |  | Tooltip. |
+| `icon` | `string` |  | Icon: an emoji or a Lucide icon name such as "chart-line". |
+| `html` | `string` |  | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `width` | `number` |  | Width in px for HTML widgets. Default `120`. |
+| `side` | `"left" \| "right"` |  | Side. Default `"right"`. |
+| `order` | `number` |  | Order (lower first). Default `0`. |
+| `command` | `string` |  | Command id to run on click (see commands.list). |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `statusBar.removeWidget`
+
+Remove a status bar widget.
+
+**Permission:** `ui.status` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Widget id. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+## blocks
+
+### `blocks.registerType`
+
+Register a custom editor block type rendered by an HTML view; it appears in the slash menu.
+
+Each block stores JSON data in the page. In the view, read it from `noteral.props.data` and save changes with `noteral.setData(next)`; `noteral.props.editable` says whether the page can be edited. Keep `type` stable: documents reference it.
+
+**Permission:** `blocks` · **Returns:** `BlockTypeInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `type` | `string` | yes | Type id, e.g. "kanban-mini" (lowercase letters, digits, dots, dashes). |
+| `title` | `string` | yes | Name in the slash menu. |
+| `description` | `string` |  | Slash menu hint. |
+| `icon` | `string` |  | Icon: an emoji or a Lucide icon name such as "chart-line". |
+| `keywords` | `string[]` |  | Extra search words. |
+| `html` | `string` | yes | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `defaultData` | `unknown` |  | Data for new blocks. |
+| `height` | `number` |  | Initial height in px (the view auto-resizes). Default `120`. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+```ts
+await app.blocks.registerType({ type: "counter", title: "Counter", icon: "plus", defaultData: { n: 0 }, html: "<button class=n-btn id=b></button><script>const r=()=>b.textContent='Clicked '+noteral.props.data.n;r();noteral.onProps(r);b.onclick=()=>noteral.setData({n:noteral.props.data.n+1})</script>" });
+```
+
+### `blocks.unregisterType`
+
+Remove a custom block type (existing blocks show a placeholder).
+
+**Permission:** `blocks` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `type` | `string` | yes | Type id. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `blocks.listTypes`
+
+List custom block types.
+
+**Permission:** none · **Returns:** `BlockTypeInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `blocks.insert`
+
+Insert a custom block into the open page.
+
+**Permission:** `editor.write` · **Returns:** `{ blockId: string }` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `type` | `string` | yes | Custom block type. |
+| `data` | `unknown` |  | Block data (defaults to the type's defaultData). |
+| `after` | `string` |  | Insert after this block id (default: end of page). |
+
+### `blocks.setData`
+
+Replace the data of a custom block in the open page.
+
+**Permission:** `editor.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `blockId` | `string` | yes | Block id. |
+| `data` | `unknown` | yes | New data. |
+
+## nodes
+
+### `nodes.registerType`
+
+Register a custom page type for the page tree, opened in a full-page HTML view.
+
+Items of this type are created with nodes.create or from the tree's New menu. The view gets `noteral.props` = { pageId, title, data, editable } and saves with `noteral.setData(next)`. Items can have children like folders.
+
+**Permission:** `nodes` · **Returns:** `NodeTypeInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `type` | `string` | yes | Type id (lowercase letters, digits, dots, dashes). |
+| `title` | `string` | yes | Type name, e.g. "Kanban board". |
+| `description` | `string` |  | Shown in the New menu. |
+| `icon` | `string` |  | Icon: an emoji or a Lucide icon name such as "chart-line". |
+| `html` | `string` | yes | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `defaultData` | `unknown` |  | Data for new items. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `nodes.unregisterType`
+
+Remove a custom page type (existing items show a placeholder).
+
+**Permission:** `nodes` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `type` | `string` | yes | Type id. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `nodes.listTypes`
+
+List custom page types.
+
+**Permission:** none · **Returns:** `NodeTypeInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `nodes.create`
+
+Create an item of a custom page type in the tree.
+
+**Permission:** `pages.write` · **Returns:** `{ pageId: string }` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `type` | `string` | yes | Custom page type. |
+| `title` | `string` |  | Title. |
+| `parentId` | `string` |  | Parent page/folder id. |
+| `data` | `unknown` |  | Initial data (defaults to the type's defaultData). |
+| `open` | `boolean` |  | Open it. Default `true`. |
+
+### `nodes.getData`
+
+Read a custom item's type and data.
+
+**Permission:** `pages.read` · **Returns:** `{ type: string; data: unknown }` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Item id. |
+
+### `nodes.setData`
+
+Replace a custom item's data.
+
+**Permission:** `pages.write` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `pageId` | `string` | yes | Item id. |
+| `data` | `unknown` | yes | New data. |
+
+## home
+
+### `home.listViews`
+
+List Home views (built-in templates and custom views).
+
+**Permission:** none · **Returns:** `HomeViewSummary[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `home.widgetTypes`
+
+List Home widget types with their default sizes.
+
+**Permission:** none · **Returns:** `HomeWidgetTypeInfo[]` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `home.getView`
+
+Get a custom Home view with all widgets and settings.
+
+**Permission:** none · **Returns:** `HomeViewInfo` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `viewId` | `string` | yes | Custom view id. |
+
+### `home.createView`
+
+Create a custom Home view (empty, from a template layout, or a copy).
+
+**Permission:** `home` · **Returns:** `HomeViewInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `name` | `string` |  | View name. |
+| `from` | `string` |  | Copy this custom view id instead of starting from the default layout. |
+| `empty` | `boolean` |  | Start with no widgets. |
+| `open` | `boolean` |  | Open it in the active Home tab. Default `true`. |
+
+### `home.updateView`
+
+Change a custom view's settings: name, width, gap, card style, radius, shadow, font, accent, CSS.
+
+`css` is scoped to the view: `&` is the Home view root, and `.home-card` / `[data-widget-type=…]` target cards.
+
+**Permission:** `home` · **Returns:** `HomeViewInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `viewId` | `string` | yes | Custom view id. |
+| `name` | `string` |  | Name. |
+| `title` | `string` |  | Greeting headline override. |
+| `width` | `"narrow" \| "wide" \| "full"` |  | Content width. |
+| `gap` | `"tight" \| "normal" \| "roomy"` |  | Spacing. |
+| `cards` | `"glass" \| "solid" \| "outline" \| "flat"` |  | Default card style. |
+| `radius` | `number` |  | Card radius px. |
+| `shadow` | `"none" \| "soft" \| "lifted"` |  | Card shadow. |
+| `font` | `"serif" \| "sans" \| "mono"` |  | Font. |
+| `valign` | `"top" \| "center"` |  | Vertical alignment. |
+| `accent` | `string` |  | Accent #rrggbb ("" resets). |
+| `css` | `string` |  | Custom CSS for the view. |
+
+### `home.removeView`
+
+Delete a custom Home view.
+
+**Permission:** `home` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `viewId` | `string` | yes | Custom view id. |
+
+### `home.setDefault`
+
+Make a view (template id or custom view id) the default for new Home tabs.
+
+**Permission:** `home` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `viewId` | `string` | yes | View id. |
+
+### `home.open`
+
+Open a Home view (template id or custom view id) in a Home tab.
+
+**Permission:** `navigation` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `viewId` | `string` | yes | View id. |
+
+### `home.setBackground`
+
+Set a Home view's background: a preset, a color, a gradient or an animated wallpaper.
+
+**Permission:** `home` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `viewId` | `string` | yes | View id (template or custom). |
+| `background` | `string` | yes | Preset id (see home.listViews → backgrounds), "custom-color" or "custom-gradient". |
+| `color` | `string` |  | #rrggbb for custom-color. |
+| `gradient` | `{ /** #rrggbb */ from: string; /** #rrggbb */ to: string; /** Degrees. */ angle?: number; /** Kind. */ kind?: "linear" \| "radial"; }` |  |  |
+
+### `home.addWidget`
+
+Add a widget to a custom Home view; type "html" is a fully custom widget (HTML/CSS/JS).
+
+Without x/y the widget goes into the first free spot. HTML widgets get `noteral.props` = { data, widgetId, viewId } and can persist with `noteral.setData(next)`.
+
+**Permission:** `home` · **Returns:** `HomeWidgetInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `viewId` | `string` | yes | Custom view id. |
+| `type` | `string` | yes | Widget type (see home.widgetTypes). |
+| `x` | `number` |  | Column (0-23). |
+| `y` | `number` |  | Row (10px rows). |
+| `w` | `number` |  | Width in columns (1-24). |
+| `h` | `number` |  | Height in rows (1 row = 10px). |
+| `title` | `string` |  | Card title. |
+| `hideTitle` | `boolean` |  | Hide the title. |
+| `style` | `"default" \| "glass" \| "solid" \| "outline" \| "flat"` |  | Card style. |
+| `tint` | `string` |  | Accent color (#rrggbb). |
+| `variant` | `string` |  | Widget-specific variant (e.g. clock: digital\|analog\|minimal). |
+| `text` | `string` |  | Text / Markdown for note, text and prompt widgets. |
+| `limit` | `number` |  | Items to show. |
+| `pageId` | `string` |  | Page/folder/database the widget points at. |
+| `pageIds` | `string[]` |  | Pages for links/gallery widgets. |
+| `url` | `string` |  | Image URL or link. |
+| `date` | `string` |  | ISO date for countdowns. |
+| `html` | `string` |  | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `css` | `string` |  | Extra CSS for this widget's card (`&` = the card). |
+| `data` | `unknown` |  | Free-form data for html widgets (noteral.props.data). |
+
+```ts
+await app.home.addWidget({ viewId, type: "html", title: "Weather", w: 8, h: 14, html: "<div class=n-card>☀️ 21°</div>" });
+```
+
+### `home.updateWidget`
+
+Change a Home widget (position, size, style, content).
+
+**Permission:** `home` · **Returns:** `HomeWidgetInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `viewId` | `string` | yes | Custom view id. |
+| `widgetId` | `string` | yes | Widget id. |
+| `type` | `string` |  | Widget type (see home.widgetTypes). "html" is a fully custom widget. |
+| `x` | `number` |  | Column (0-23). |
+| `y` | `number` |  | Row (10px rows). |
+| `w` | `number` |  | Width in columns (1-24). |
+| `h` | `number` |  | Height in rows (1 row = 10px). |
+| `title` | `string` |  | Card title. |
+| `hideTitle` | `boolean` |  | Hide the title. |
+| `style` | `"default" \| "glass" \| "solid" \| "outline" \| "flat"` |  | Card style. |
+| `tint` | `string` |  | Accent color (#rrggbb). |
+| `variant` | `string` |  | Widget-specific variant (e.g. clock: digital\|analog\|minimal). |
+| `text` | `string` |  | Text / Markdown for note, text and prompt widgets. |
+| `limit` | `number` |  | Items to show. |
+| `pageId` | `string` |  | Page/folder/database the widget points at. |
+| `pageIds` | `string[]` |  | Pages for links/gallery widgets. |
+| `url` | `string` |  | Image URL or link. |
+| `date` | `string` |  | ISO date for countdowns. |
+| `html` | `string` |  | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `css` | `string` |  | Extra CSS for this widget's card (`&` = the card). |
+| `data` | `unknown` |  | Free-form data for html widgets (noteral.props.data). |
+
+### `home.removeWidget`
+
+Remove a Home widget.
+
+**Permission:** `home` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `viewId` | `string` | yes | Custom view id. |
+| `widgetId` | `string` | yes | Widget id. |
+
+## views
+
+### `views.post`
+
+Send a message to the plugin's HTML views (tabs, widgets, blocks, pages); they receive it with noteral.onMessage.
+
+**Permission:** none · **Returns:** `{ delivered: number }` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `name` | `string` | yes | Message name. |
+| `payload` | `unknown` |  | JSON payload. |
+| `view` | `string` |  | Only this view key (from the view:message event). |
+
+## plugins
+
+### `plugins.list`
+
+List installed plugins.
+
+**Permission:** none · **Returns:** `PluginInfo[]` · **Callers:** assistant · **Assistant modes:** Ask, Edit, Creator
+
+No parameters.
+
+### `plugins.getSource`
+
+Read an installed plugin's manifest, code and styles.
+
+**Permission:** none · **Returns:** `PluginSourceInfo` · **Callers:** assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Plugin id. |
+
+### `plugins.create`
+
+Install (or update) a plugin written by the assistant. The user reviews the code and permissions first.
+
+code is plain JavaScript run in a sandbox. It must call Noteral.register(class extends Noteral.Plugin { async onload() {…} onunload() {…} }). Use this.app.<namespace>.<method>(params) for every App API method (e.g. this.app.sidebar.setTab, this.app.statusBar.setWidget, this.app.blocks.registerType, this.app.nodes.registerType, this.app.home.addWidget), this.addCommand({ id, title, run }), this.setStatus(itemId, text), this.setPanel(panelId, { title, markdown, actions }), this.onPanelAction(panelId, fn), this.onViewMessage(fn), this.registerEvent(eventName, fn), this.addStyles(css), this.loadData() / this.saveData(patch). The plugin is test-run first (see plugins.test) and, after installing, its start-up is checked: the result's `health` reports errors so you can fix and reinstall.
+
+**Permission:** none · **Returns:** `PluginInstallResult` · **Callers:** assistant · **Assistant modes:** Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `manifest` | `{ /** Reverse-DNS id, e.g. com.assistant.word-goal. */ id: string; /** Name. */ name: string; /** Semver, e.g. 1.0.0. */ version: string; /** What it does. */ description: string; /** Permissions the code needs. */ permissions?: string[]; /** Commands it adds. */ commands?: { /** Command id (lowercase, dashes). */ id: string; /** Title. */ title: string; }[]; /** Status bar items. */ statusItems?: { /** Item id. */ id: string; /** Label. */ label: string; }[]; /** Sidebar panels. */ panels?: { /** Panel id. */ id: string; /** Title. */ title: string; }[]; }` | yes |  |
+| `code` | `string` | yes | Plugin JavaScript. |
+| `styles` | `string` |  | Optional CSS (needs ui.styles). |
+| `skipTest` | `boolean` |  | Install even if the test run reports errors. Default `false`. |
+
+### `plugins.test`
+
+Run plugin code in a throw-away sandbox without installing it, and report errors, logs, commands and UI it registered.
+
+Write calls (except UI registration) are skipped during the test. Always test before plugins.create and fix every reported error.
+
+**Permission:** none · **Returns:** `PluginTestResult` · **Callers:** assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `manifest` | `{ /** Plugin id. */ id: string; /** Name. */ name: string; /** Version. */ version?: string; /** Permissions. */ permissions?: string[]; }` | yes |  |
+| `code` | `string` | yes | Plugin JavaScript. |
+| `styles` | `string` |  | CSS. |
+| `waitMs` | `number` |  | How long to watch it (ms). Default `1500`. |
+
+### `plugins.logs`
+
+Read an installed plugin's recent errors, warnings and console output.
+
+**Permission:** none · **Returns:** `LogEntryInfo[]` · **Callers:** assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Plugin id. |
+| `limit` | `number` |  | Entries. Default `50`. |
+
+### `plugins.uninstall`
+
+Uninstall a plugin.
+
+**Permission:** none · **Returns:** `void` · **Callers:** assistant · **Assistant modes:** Creator · **Asks first**
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Plugin id. |
+
+### `plugins.setEnabled`
+
+Enable or disable an installed plugin.
+
+**Permission:** none · **Returns:** `void` · **Callers:** assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Plugin id. |
+| `enabled` | `boolean` | yes | Enabled. |
+
+## Events
+
+Subscribe with `this.registerEvent(name, handler)`. Events are only computed while someone listens.
+
+| Event | Payload | Permission | When |
+| --- | --- | --- | --- |
+| `document:changed` | `EditorSnapshot` | `editor.read` | The open page changed (debounced). Payload is the editor snapshot. |
+| `page:opened` | `ActivePage \| null` | none | A different page (or Home) became active. |
+| `theme:changed` | `{ theme: "light" \| "dark" }` | none | Light/dark theme changed. |
+| `workspace:opened` | `WorkspaceInfo` | none | A workspace was opened. |
+| `pages:changed` | `{ count: number }` | `pages.read` | Pages were created, renamed, moved or trashed. |
+| `panel:action` | `{ panelId: string; actionId: string }` | `ui.panel` | A button in one of the plugin's panels or Markdown tabs was pressed. |
+| `view:message` | `{ view: string; name: string; payload: unknown }` | none | One of the plugin's HTML views called noteral.post(name, payload). |
+
+## Permissions
+
+| Permission | Risk | Grants |
+| --- | --- | --- |
+| `editor.read` | low | **Read the open page.** Read the text, blocks and selection of the page you are editing. |
+| `editor.write` | medium | **Edit the open page.** Insert, change and remove blocks in the page you are editing. |
+| `pages.read` | medium | **Read pages.** List pages and read the content of any page in the workspace. |
+| `pages.write` | high | **Change pages.** Create, rename, move, rewrite and trash pages. |
+| `databases.read` | medium | **Read databases.** Read database schemas and rows. |
+| `databases.write` | high | **Change databases.** Create databases, add properties and add or edit rows. |
+| `navigation` | low | **Navigate.** Open pages, go back and forward, open Home. |
+| `search.read` | medium | **Search.** Run full-text searches across the workspace. |
+| `ui.status` | low | **Status bar.** Show text and widgets in the status bar. |
+| `ui.notify` | low | **Notifications.** Show toast notifications. |
+| `ui.panel` | low | **Sidebar tabs.** Add tabs to the right sidebar. |
+| `ui.modal` | low | **Dialogs.** Ask you to confirm, type an answer or pick from a list. |
+| `ui.styles` | medium | **Plugin styles.** Add CSS to the app (for the plugin's own look). |
+| `settings.read` | low | **Read its settings.** Read the plugin's own saved settings. |
+| `settings.write` | low | **Save its settings.** Save the plugin's own settings. |
+| `assets.read` | low | **Read files.** Read images and files attached to pages. |
+| `assets.write` | low | **Import files.** Ask you to pick an image or file and import it. |
+| `workspaces.read` | low | **See workspaces.** List workspaces and see which one is open. |
+| `workspaces.write` | high | **Manage workspaces.** Create, rename and switch workspaces. |
+| `layout` | low | **Layout.** Split panes, arrange sidebar tab groups, show or hide sidebars and resize panels. |
+| `appearance` | medium | **Appearance.** Change colors, fonts and component styles across the app. |
+| `preferences` | medium | **Preferences.** Read and change app preferences such as theme and font size. |
+| `commands.execute` | high | **Run commands.** Run any command from the command palette. |
+| `clipboard` | medium | **Clipboard.** Read and write the clipboard. |
+| `network` | high | **Internet access.** Make web requests, search the web and fetch pages. |
+| `blocks` | low | **Custom blocks.** Add new kinds of blocks to the editor (rendered in a sandbox). |
+| `nodes` | low | **Custom page types.** Add new kinds of items to the page tree (rendered in a sandbox). |
+| `home` | medium | **Home.** Create, change and remove Home views and widgets. |
+
+## Types
+
+Return types, as shipped in `@noteral/sdk` (`sdk/src/types.ts`).
+
+```ts
+export interface AppInfo {
+  appName: string;
+  appVersion: string;
+  sdkVersion: string;
+  platform: string;
+  theme: "light" | "dark";
+  workspaceId: string | null;
+}
+
+export interface ActivePage {
+  id: string;
+  title: string;
+  kind: "page" | "folder" | "database" | "row" | "custom";
+  paneId: string;
+  /** True when the page is open in a live editor (editor.* methods work on it). */
+  editable: boolean;
+}
+
+export interface BlockSummary {
+  id: string;
+  type: string;
+  text: string;
+  props?: Record<string, unknown>;
+  children?: BlockSummary[];
+}
+
+export interface EditorSelection {
+  text: string;
+  blockIds: string[];
+  cursorBlockId: string;
+}
+
+export interface OutlineItem {
+  id: string;
+  text: string;
+  level: number;
+}
+
+export interface EditorSnapshot {
+  pageId: string;
+  title: string;
+  wordCount: number;
+  blockCount: number;
+  text: string;
+  outline: OutlineItem[];
+}
+
+export interface PageInfo {
+  id: string;
+  title: string;
+  icon: string;
+  cover: string;
+  kind: "page" | "folder" | "database" | "row" | "custom";
+  /** Custom node type id, for kind "custom" (see nodes.listTypes). */
+  nodeType?: string;
+  parentId: string;
+  /** For rows: the database they belong to. */
+  databaseId?: string;
+  createdAt: string;
+  updatedAt: string;
+  deleted?: boolean;
+}
+
+export interface PageContent {
+  page: PageInfo;
+  format: "markdown" | "text";
+  content: string;
+  /** Child pages (and database rows) directly under this page. */
+  children: PageInfo[];
+}
+
+export interface DatabaseInfo {
+  id: string;
+  title: string;
+  parentId: string;
+  rowCount: number;
+  properties: string[];
+}
+
+export interface DatabasePropertyInfo {
+  id: string;
+  name: string;
+  type: string;
+  options?: { id: string; name: string; color: string }[];
+}
+
+export interface DatabaseSchemaInfo {
+  databaseId: string;
+  title: string;
+  titleName: string;
+  properties: DatabasePropertyInfo[];
+  views: { id: string; name: string; type: string }[];
+}
+
+export interface DatabaseViewInfo {
+  databaseId: string;
+  id: string;
+  name: string;
+  type: "table" | "board" | "gallery" | "list" | "calendar";
+  filters: { id: string; property: string; op: string; value?: unknown }[];
+  filterMode: "and" | "or";
+  sorts: { property: string; direction: "asc" | "desc" }[];
+  /** Visible properties, in order (the title column first). */
+  visible: string[];
+  hidden: string[];
+  groupBy?: string;
+  hiddenGroups?: string[];
+  dateProperty?: string;
+  cardPreview?: "cover" | "none";
+  wrap?: boolean;
+  widths?: Record<string, number>;
+  calcs?: Record<string, string>;
+}
+
+export interface DatabaseRowInfo {
+  id: string;
+  title: string;
+  /** Values keyed by property name; select options are returned by name. */
+  values: Record<string, unknown>;
+  updatedAt: string;
+}
+
+export interface WorkspaceInfo {
+  id: string;
+  name: string;
+  pageCount: number;
+  current: boolean;
+}
+
+export interface TabInfo {
+  id: string;
+  title: string;
+  kind: "page" | "home";
+  paneId: string;
+  active: boolean;
+}
+
+export interface PaneInfo {
+  id: string;
+  tabs: string[];
+  activeTabId: string;
+  focused: boolean;
+  maximized: boolean;
+}
+
+export interface LayoutInfo {
+  panes: PaneInfo[];
+  /** Nested split tree: { type: "pane", id } | { type: "split", dir, sizes, children }. */
+  tree: unknown;
+  leftOpen: boolean;
+  rightOpen: boolean;
+  railOpen: boolean;
+  leftWidth: number;
+  rightWidth: number;
+  leftTab: string;
+  rightTab: string;
+}
+
+export interface SearchHitInfo {
+  pageId: string;
+  title: string;
+  snippet: string;
+  updatedAt: string;
+}
+
+export interface Preferences {
+  theme: "light" | "dark" | "system";
+  editorFont: "serif" | "sans";
+  fontSize: number;
+  lineHeight: number;
+  pageWidth: number;
+  fullWidth: boolean;
+  autosaveDelay: number;
+  spellcheck: boolean;
+  reduceMotion: boolean;
+  showStats: boolean;
+}
+
+export interface CssSnippet {
+  id: string;
+  label: string;
+  css: string;
+  enabled: boolean;
+}
+
+export interface ComponentStyle {
+  css?: string;
+  rules?: string;
+  hidden?: boolean;
+}
+
+export interface Look {
+  tokens: { light: Record<string, string>; dark: Record<string, string> };
+  components: Record<string, ComponentStyle>;
+  css: CssSnippet[];
+}
+
+/** The base look plus every layer. */
+export interface Customizations extends Look {
+  version: 2;
+  layers: LayerInfo[];
+  sidebar?: { groups: { id: string; tabs: string[]; active: string; size: number }[] };
+}
+
+/** A switchable bundle of customizations (see appearance.listLayers). */
+export interface LayerInfo extends Look {
+  id: string;
+  name: string;
+  description?: string;
+  source: "assistant" | "user" | "plugin";
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+  permissions: string[];
+  chatId?: string;
+  pluginId?: string;
+  sidebarTabs: SidebarTabDefinition[];
+  statusWidgets: StatusWidgetDefinition[];
+  blockTypes: BlockTypeDefinition[];
+  nodeTypes: NodeTypeDefinition[];
+}
+
+export interface TokenInfo {
+  name: string;
+  group: "color" | "font" | "shape" | "layout";
+  description: string;
+  light: string;
+  dark: string;
+}
+
+export interface ComponentInfo {
+  id: string;
+  label: string;
+  selector: string;
+  description: string;
+}
+
+export interface CommandInfo {
+  id: string;
+  title: string;
+  category: string;
+  description?: string;
+  shortcut?: string;
+}
+
+export interface WebSearchResult {
+  query: string;
+  engine: string;
+  results: { title: string; url: string; snippet: string }[];
+}
+
+export interface WebPage {
+  url: string;
+  finalUrl: string;
+  title: string;
+  contentType: string;
+  /** Readable text (Markdown-ish) extracted from the page. */
+  content: string;
+  truncated: boolean;
+  links?: { text: string; url: string }[];
+}
+
+export interface HttpResponse {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  /** Body as text, or base64 when `encoding` is "base64". */
+  body: string;
+  encoding: "text" | "base64";
+  url: string;
+}
+
+export interface PluginInfo {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  description: string;
+  enabled: boolean;
+  source: string;
+  permissions: string[];
+  problem?: string;
+}
+
+export interface PluginSourceInfo {
+  manifest: Record<string, unknown>;
+  code: string;
+  styles: string;
+}
+
+export interface PanelAction {
+  id: string;
+  label: string;
+  primary?: boolean;
+}
+
+/** manifest.json — see docs/plugins/manifest.md. */
+export interface PluginManifest {
+  /** Reverse-domain id, e.g. "com.example.word-goal". Never changes between versions. */
+  id: string;
+  name: string;
+  /** Semver, e.g. "1.2.0". Must match the GitHub release tag (with or without "v"). */
+  version: string;
+  /** SDK the plugin was built against, e.g. "2.0.0". */
+  sdkVersion: string;
+  /** Oldest Noteral version the plugin works with. */
+  minAppVersion?: string;
+  description?: string;
+  author?: string;
+  authorUrl?: string;
+  /** "owner/name" of the GitHub repository that publishes releases. */
+  repo?: string;
+  /** Bundled script, usually "main.js". */
+  entry: string;
+  permissions: string[];
+  contributes?: {
+    commands?: Array<{ id: string; title: string; description?: string; keywords?: string }>;
+    statusItems?: Array<{ id: string; label: string }>;
+    panels?: Array<{ id: string; title: string }>;
+  };
+}
+
+export interface StatusOptions {
+  /** Tooltip shown on hover. */
+  title?: string;
+}
+
+/** Content of a sidebar tab or similar surface: Markdown with buttons, or an HTML view. */
+export interface ViewContent {
+  markdown?: string;
+  actions?: PanelAction[];
+  html?: string;
+}
+
+export interface SidebarTabDefinition {
+  id: string;
+  title: string;
+  icon?: string;
+  view: ViewContent;
+}
+
+export interface StatusWidgetDefinition {
+  id: string;
+  text?: string;
+  tooltip?: string;
+  icon?: string;
+  html?: string;
+  width?: number;
+  side: "left" | "right";
+  order: number;
+  command?: string;
+}
+
+export interface BlockTypeDefinition {
+  type: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  keywords?: string[];
+  html: string;
+  defaultData?: unknown;
+  height?: number;
+}
+
+export interface NodeTypeDefinition {
+  type: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  html: string;
+  defaultData?: unknown;
+}
+
+export interface ContributionOwnerInfo {
+  kind: "plugin" | "layer";
+  id: string;
+  name: string;
+}
+
+export interface SidebarTabInfo {
+  /** Key used by sidebar.openTab / setLayout: built-in id or "<owner kind>:<owner id>:<tab id>". */
+  key: string;
+  id: string;
+  title: string;
+  icon?: string;
+  builtin: boolean;
+  owner?: ContributionOwnerInfo;
+  kind: "builtin" | "markdown" | "html";
+}
+
+export interface SidebarInfo {
+  open: boolean;
+  width: number;
+  groups: { tabs: string[]; active: string; size: number }[];
+  tabs: SidebarTabInfo[];
+}
+
+export interface StatusWidgetInfo {
+  key: string;
+  id: string;
+  side: "left" | "right";
+  order: number;
+  builtin: boolean;
+  text?: string;
+  kind: "builtin" | "text" | "html";
+  owner?: ContributionOwnerInfo;
+}
+
+export interface BlockTypeInfo {
+  type: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  owner: ContributionOwnerInfo;
+}
+
+export interface NodeTypeInfo {
+  type: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  owner: ContributionOwnerInfo;
+}
+
+export interface HomeViewSummary {
+  id: string;
+  name: string;
+  kind: "template" | "custom";
+  isDefault: boolean;
+  widgets?: number;
+  background: string;
+}
+
+export interface HomeWidgetInfo {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  title?: string;
+  [key: string]: unknown;
+}
+
+export interface HomeViewInfo {
+  id: string;
+  name: string;
+  title: string;
+  width: "narrow" | "wide" | "full";
+  gap: "tight" | "normal" | "roomy";
+  cards: "glass" | "solid" | "outline" | "flat";
+  radius: number;
+  shadow: "none" | "soft" | "lifted";
+  font: "serif" | "sans" | "mono";
+  valign: "top" | "center";
+  accent?: string;
+  css?: string;
+  widgets: HomeWidgetInfo[];
+  /** Background presets that home.setBackground accepts. */
+  backgrounds: string[];
+}
+
+export interface HomeWidgetTypeInfo {
+  type: string;
+  label: string;
+  description: string;
+  w: number;
+  h: number;
+}
+
+export interface AskResult {
+  /** The typed answer, or the chosen labels joined with ", ". */
+  answer: string;
+  choices: string[];
+  cancelled: boolean;
+}
+
+export interface LogEntryInfo {
+  at: number;
+  level: "info" | "warn" | "error";
+  message: string;
+}
+
+export interface PluginTestResult {
+  ok: boolean;
+  status: "ready" | "failed" | "timeout";
+  error?: string;
+  logs: { level: string; message: string }[];
+  commands: string[];
+  contributions: { sidebarTabs: string[]; statusWidgets: string[]; blockTypes: string[]; nodeTypes: string[]; panels: string[]; statusItems: string[] };
+  /** App API methods the code called. */
+  calls: string[];
+  /** Write calls that were skipped during the test. */
+  skipped: string[];
+}
+
+export interface PluginInstallResult extends PluginInfo {
+  test?: PluginTestResult;
+  health: { status: "ready" | "failed" | "starting" | "stopped"; error?: string; logs: { level: string; message: string }[] };
+}
+```

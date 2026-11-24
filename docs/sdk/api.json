@@ -1,0 +1,6135 @@
+{
+  "sdkVersion": "2.0.0",
+  "generatedFrom": "frontend/src/sdk-host/spec.ts",
+  "tiers": {
+    "read": "Ask mode and up",
+    "content": "Edit mode and up",
+    "app": "Creator mode only"
+  },
+  "permissions": [
+    {
+      "id": "editor.read",
+      "title": "Read the open page",
+      "description": "Read the text, blocks and selection of the page you are editing.",
+      "risk": "low"
+    },
+    {
+      "id": "editor.write",
+      "title": "Edit the open page",
+      "description": "Insert, change and remove blocks in the page you are editing.",
+      "risk": "medium"
+    },
+    {
+      "id": "pages.read",
+      "title": "Read pages",
+      "description": "List pages and read the content of any page in the workspace.",
+      "risk": "medium"
+    },
+    {
+      "id": "pages.write",
+      "title": "Change pages",
+      "description": "Create, rename, move, rewrite and trash pages.",
+      "risk": "high"
+    },
+    {
+      "id": "databases.read",
+      "title": "Read databases",
+      "description": "Read database schemas and rows.",
+      "risk": "medium"
+    },
+    {
+      "id": "databases.write",
+      "title": "Change databases",
+      "description": "Create databases, add properties and add or edit rows.",
+      "risk": "high"
+    },
+    {
+      "id": "navigation",
+      "title": "Navigate",
+      "description": "Open pages, go back and forward, open Home.",
+      "risk": "low"
+    },
+    {
+      "id": "search.read",
+      "title": "Search",
+      "description": "Run full-text searches across the workspace.",
+      "risk": "medium"
+    },
+    {
+      "id": "ui.status",
+      "title": "Status bar",
+      "description": "Show text and widgets in the status bar.",
+      "risk": "low"
+    },
+    {
+      "id": "ui.notify",
+      "title": "Notifications",
+      "description": "Show toast notifications.",
+      "risk": "low"
+    },
+    {
+      "id": "ui.panel",
+      "title": "Sidebar tabs",
+      "description": "Add tabs to the right sidebar.",
+      "risk": "low"
+    },
+    {
+      "id": "ui.modal",
+      "title": "Dialogs",
+      "description": "Ask you to confirm, type an answer or pick from a list.",
+      "risk": "low"
+    },
+    {
+      "id": "ui.styles",
+      "title": "Plugin styles",
+      "description": "Add CSS to the app (for the plugin's own look).",
+      "risk": "medium"
+    },
+    {
+      "id": "settings.read",
+      "title": "Read its settings",
+      "description": "Read the plugin's own saved settings.",
+      "risk": "low"
+    },
+    {
+      "id": "settings.write",
+      "title": "Save its settings",
+      "description": "Save the plugin's own settings.",
+      "risk": "low"
+    },
+    {
+      "id": "assets.read",
+      "title": "Read files",
+      "description": "Read images and files attached to pages.",
+      "risk": "low"
+    },
+    {
+      "id": "assets.write",
+      "title": "Import files",
+      "description": "Ask you to pick an image or file and import it.",
+      "risk": "low"
+    },
+    {
+      "id": "workspaces.read",
+      "title": "See workspaces",
+      "description": "List workspaces and see which one is open.",
+      "risk": "low"
+    },
+    {
+      "id": "workspaces.write",
+      "title": "Manage workspaces",
+      "description": "Create, rename and switch workspaces.",
+      "risk": "high"
+    },
+    {
+      "id": "layout",
+      "title": "Layout",
+      "description": "Split panes, arrange sidebar tab groups, show or hide sidebars and resize panels.",
+      "risk": "low"
+    },
+    {
+      "id": "appearance",
+      "title": "Appearance",
+      "description": "Change colors, fonts and component styles across the app.",
+      "risk": "medium"
+    },
+    {
+      "id": "preferences",
+      "title": "Preferences",
+      "description": "Read and change app preferences such as theme and font size.",
+      "risk": "medium"
+    },
+    {
+      "id": "commands.execute",
+      "title": "Run commands",
+      "description": "Run any command from the command palette.",
+      "risk": "high"
+    },
+    {
+      "id": "clipboard",
+      "title": "Clipboard",
+      "description": "Read and write the clipboard.",
+      "risk": "medium"
+    },
+    {
+      "id": "network",
+      "title": "Internet access",
+      "description": "Make web requests, search the web and fetch pages.",
+      "risk": "high"
+    },
+    {
+      "id": "blocks",
+      "title": "Custom blocks",
+      "description": "Add new kinds of blocks to the editor (rendered in a sandbox).",
+      "risk": "low"
+    },
+    {
+      "id": "nodes",
+      "title": "Custom page types",
+      "description": "Add new kinds of items to the page tree (rendered in a sandbox).",
+      "risk": "low"
+    },
+    {
+      "id": "home",
+      "title": "Home",
+      "description": "Create, change and remove Home views and widgets.",
+      "risk": "medium"
+    }
+  ],
+  "events": [
+    {
+      "name": "document:changed",
+      "summary": "The open page changed (debounced). Payload is the editor snapshot.",
+      "permission": "editor.read",
+      "payload": "EditorSnapshot"
+    },
+    {
+      "name": "page:opened",
+      "summary": "A different page (or Home) became active.",
+      "permission": null,
+      "payload": "ActivePage | null"
+    },
+    {
+      "name": "theme:changed",
+      "summary": "Light/dark theme changed.",
+      "permission": null,
+      "payload": "{ theme: \"light\" | \"dark\" }"
+    },
+    {
+      "name": "workspace:opened",
+      "summary": "A workspace was opened.",
+      "permission": null,
+      "payload": "WorkspaceInfo"
+    },
+    {
+      "name": "pages:changed",
+      "summary": "Pages were created, renamed, moved or trashed.",
+      "permission": "pages.read",
+      "payload": "{ count: number }"
+    },
+    {
+      "name": "panel:action",
+      "summary": "A button in one of the plugin's panels or Markdown tabs was pressed.",
+      "permission": "ui.panel",
+      "payload": "{ panelId: string; actionId: string }"
+    },
+    {
+      "name": "view:message",
+      "summary": "One of the plugin's HTML views called noteral.post(name, payload).",
+      "permission": null,
+      "payload": "{ view: string; name: string; payload: unknown }"
+    }
+  ],
+  "methods": [
+    {
+      "name": "app.info",
+      "summary": "Get the app version, SDK version, theme and the open workspace.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "AppInfo",
+      "example": "const info = await app.info();\nconsole.log(info.appVersion, info.theme);"
+    },
+    {
+      "name": "editor.getActive",
+      "summary": "Get the page open in the focused pane, or null when Home or nothing is open.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "ActivePage | null"
+    },
+    {
+      "name": "editor.getMarkdown",
+      "summary": "Read the open page (or some of its blocks) as Markdown.",
+      "details": "Custom blocks such as embedded databases come out as a short placeholder.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          },
+          "blockIds": {
+            "type": "array",
+            "description": "Block ids, from editor.getBlocks.",
+            "items": {
+              "type": "string",
+              "description": "Block id"
+            },
+            "maxItems": 500
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "string",
+      "example": "const md = await app.editor.getMarkdown();"
+    },
+    {
+      "name": "editor.getBlocks",
+      "summary": "List the open page's blocks with ids, types, text and nested children.",
+      "details": "Use the ids with editor.updateBlock, editor.replaceBlocks, editor.removeBlocks and editor.insertMarkdown.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "BlockSummary[]"
+    },
+    {
+      "name": "editor.getSelection",
+      "summary": "Get the selected text, the selected block ids and the block with the cursor.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "EditorSelection"
+    },
+    {
+      "name": "editor.snapshot",
+      "summary": "Get word count, block count, plain text and outline of the open page.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "EditorSnapshot | null"
+    },
+    {
+      "name": "editor.insertMarkdown",
+      "summary": "Insert Markdown at the cursor, at the start or end, or before/after a block.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "markdown": {
+            "type": "string",
+            "description": "Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported.",
+            "maxLength": 200000
+          },
+          "position": {
+            "type": "string",
+            "description": "Where to insert. 'before'/'after' need blockId.",
+            "enum": [
+              "cursor",
+              "start",
+              "end",
+              "before",
+              "after"
+            ],
+            "default": "end"
+          },
+          "blockId": {
+            "type": "string",
+            "description": "Anchor block for 'before'/'after'."
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ blockIds: string[] }",
+      "example": "await app.editor.insertMarkdown({ markdown: \"## Summary\\n- one\\n- two\", position: \"end\" });"
+    },
+    {
+      "name": "editor.replaceBlocks",
+      "summary": "Replace blocks with new content parsed from Markdown.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "blockIds": {
+            "type": "array",
+            "description": "Block ids, from editor.getBlocks.",
+            "items": {
+              "type": "string",
+              "description": "Block id"
+            },
+            "maxItems": 500
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported.",
+            "maxLength": 200000
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "blockIds",
+          "markdown"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ blockIds: string[] }"
+    },
+    {
+      "name": "editor.updateBlock",
+      "summary": "Change one block's type, text or props (e.g. heading level, checked).",
+      "details": "Types: paragraph, heading (props.level 1-3), bulletListItem, numberedListItem, checkListItem (props.checked), quote, codeBlock (props.language).",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "description": "Block id."
+          },
+          "type": {
+            "type": "string",
+            "description": "New block type."
+          },
+          "text": {
+            "type": "string",
+            "description": "New plain text content.",
+            "maxLength": 20000
+          },
+          "props": {
+            "type": "object",
+            "description": "Block props to set.",
+            "properties": {},
+            "additionalProperties": true
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "blockId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "editor.removeBlocks",
+      "summary": "Remove blocks from the open page.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "blockIds": {
+            "type": "array",
+            "description": "Block ids, from editor.getBlocks.",
+            "items": {
+              "type": "string",
+              "description": "Block id"
+            },
+            "maxItems": 500
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "blockIds"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "editor.setMarkdown",
+      "summary": "Replace the whole open page with Markdown.",
+      "details": "Undoable with editor.undo. Prefer targeted edits for small changes.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "markdown": {
+            "type": "string",
+            "description": "Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported.",
+            "maxLength": 200000
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "editor.insertBlocks",
+      "summary": "Insert simple blocks after the cursor (SDK 1 shape).",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "blocks": {
+            "type": "array",
+            "description": "Blocks to insert.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Block type.",
+                  "enum": [
+                    "paragraph",
+                    "heading",
+                    "bulletListItem",
+                    "numberedListItem",
+                    "checkListItem",
+                    "quote",
+                    "codeBlock"
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Text.",
+                  "maxLength": 20000
+                },
+                "level": {
+                  "type": "integer",
+                  "description": "Heading level.",
+                  "minimum": 1,
+                  "maximum": 3
+                },
+                "checked": {
+                  "type": "boolean",
+                  "description": "Checklist state."
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "blocks"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "editor.undo",
+      "summary": "Undo the last edit in the open page.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "boolean"
+    },
+    {
+      "name": "editor.redo",
+      "summary": "Redo the last undone edit in the open page.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "boolean"
+    },
+    {
+      "name": "editor.scrollToBlock",
+      "summary": "Scroll the open page to a block.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "description": "Block id."
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "blockId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "editor.openFind",
+      "summary": "Open the find bar (or find & replace) in the open page.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "replace": {
+            "type": "boolean",
+            "description": "Show the replace row."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.list",
+      "summary": "List pages, folders and databases in the open workspace.",
+      "details": "Pass parentId \"\" for top-level items. Database rows are pages whose parent is the database.",
+      "permission": "pages.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "type": "string",
+            "description": "Only children of this item. \"\" = top level."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Only this kind.",
+            "enum": [
+              "page",
+              "folder",
+              "database"
+            ]
+          },
+          "query": {
+            "type": "string",
+            "description": "Only titles containing this text (case-insensitive)."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results.",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 500
+          },
+          "includeRows": {
+            "type": "boolean",
+            "description": "Include database rows.",
+            "default": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "PageInfo[]",
+      "example": "const pages = await app.pages.list({ parentId: \"\" });"
+    },
+    {
+      "name": "pages.get",
+      "summary": "Get one page's metadata.",
+      "permission": "pages.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "PageInfo"
+    },
+    {
+      "name": "pages.read",
+      "summary": "Read any page's content as Markdown or plain text.",
+      "permission": "pages.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format.",
+            "enum": [
+              "markdown",
+              "text"
+            ],
+            "default": "markdown"
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "PageContent"
+    },
+    {
+      "name": "pages.path",
+      "summary": "Get the breadcrumb path (ancestors, top first) of a page.",
+      "permission": "pages.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "PageInfo[]"
+    },
+    {
+      "name": "pages.favorites",
+      "summary": "List favorite pages.",
+      "permission": "pages.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "PageInfo[]"
+    },
+    {
+      "name": "pages.recent",
+      "summary": "List recently opened pages.",
+      "permission": "pages.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "PageInfo[]"
+    },
+    {
+      "name": "pages.backlinks",
+      "summary": "List pages that link to a page.",
+      "permission": "pages.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "PageInfo[]"
+    },
+    {
+      "name": "pages.trash",
+      "summary": "List trashed pages.",
+      "permission": "pages.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "PageInfo[]"
+    },
+    {
+      "name": "pages.create",
+      "summary": "Create a page or folder, optionally with Markdown content.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title.",
+            "maxLength": 300
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Parent page or folder id. Omit for top level."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Item kind.",
+            "enum": [
+              "page",
+              "folder"
+            ]
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported.",
+            "maxLength": 200000
+          },
+          "icon": {
+            "type": "string",
+            "description": "Emoji icon."
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Open it in a tab.",
+            "default": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "PageInfo",
+      "example": "const page = await app.pages.create({ title: \"Weekly review\", markdown: \"## Wins\\n- \" });"
+    },
+    {
+      "name": "pages.write",
+      "summary": "Replace a page's whole content with Markdown.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported.",
+            "maxLength": 200000
+          }
+        },
+        "required": [
+          "pageId",
+          "markdown"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.append",
+      "summary": "Append Markdown to the end of a page.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Markdown. Headings, lists, checklists (- [ ]), quotes, code fences, tables and images are supported.",
+            "maxLength": 200000
+          }
+        },
+        "required": [
+          "pageId",
+          "markdown"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.rename",
+      "summary": "Rename a page.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          },
+          "title": {
+            "type": "string",
+            "description": "New title.",
+            "maxLength": 300
+          }
+        },
+        "required": [
+          "pageId",
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.setIcon",
+      "summary": "Set a page's icon (an emoji, or \"\" to clear).",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          },
+          "icon": {
+            "type": "string",
+            "description": "Emoji or \"\".",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "pageId",
+          "icon"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.setCover",
+      "summary": "Set a page's cover: a CSS color/gradient, an image URL, or \"\" to clear.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          },
+          "cover": {
+            "type": "string",
+            "description": "Cover value.",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "pageId",
+          "cover"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.move",
+      "summary": "Move a page under another parent, optionally before a sibling.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          },
+          "parentId": {
+            "type": "string",
+            "description": "New parent id, \"\" for top level."
+          },
+          "beforeId": {
+            "type": "string",
+            "description": "Sibling to place it before."
+          }
+        },
+        "required": [
+          "pageId",
+          "parentId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.duplicate",
+      "summary": "Duplicate a page with its sub-pages.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Open the copy.",
+            "default": false
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.moveToTrash",
+      "summary": "Move a page (and its sub-pages) to the trash.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.restore",
+      "summary": "Restore a page from the trash.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "pages.setFavorite",
+      "summary": "Add a page to favorites or remove it.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          },
+          "favorite": {
+            "type": "boolean",
+            "description": "Favorite or not."
+          }
+        },
+        "required": [
+          "pageId",
+          "favorite"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "databases.list",
+      "summary": "List databases with their row counts.",
+      "permission": "databases.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "DatabaseInfo[]"
+    },
+    {
+      "name": "databases.getSchema",
+      "summary": "Get a database's properties (columns) and views.",
+      "permission": "databases.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          }
+        },
+        "required": [
+          "databaseId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "DatabaseSchemaInfo"
+    },
+    {
+      "name": "databases.queryRows",
+      "summary": "Read a database's rows with values keyed by property name.",
+      "details": "Select/status values come back as option names. `where` matches exact values (case-insensitive for text).",
+      "permission": "databases.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "where": {
+            "type": "object",
+            "description": "Property name → value that must match.",
+            "properties": {},
+            "additionalProperties": true
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum rows.",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 200
+          }
+        },
+        "required": [
+          "databaseId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "DatabaseRowInfo[]",
+      "example": "const rows = await app.databases.queryRows({ databaseId, where: { Status: \"Done\" } });"
+    },
+    {
+      "name": "databases.create",
+      "summary": "Create a database with properties.",
+      "details": "Property types: text, number, select, multiSelect, status, date, checkbox, url, email, phone, createdTime, lastEdited.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Database title.",
+            "maxLength": 300
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Parent page/folder id."
+          },
+          "properties": {
+            "type": "array",
+            "description": "Columns besides the title.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Property name.",
+                  "maxLength": 100
+                },
+                "type": {
+                  "type": "string",
+                  "description": "Property type.",
+                  "enum": [
+                    "text",
+                    "number",
+                    "select",
+                    "multiSelect",
+                    "status",
+                    "date",
+                    "checkbox",
+                    "url",
+                    "email",
+                    "phone",
+                    "createdTime",
+                    "lastEdited"
+                  ]
+                },
+                "options": {
+                  "type": "array",
+                  "description": "Options for select / multiSelect / status.",
+                  "items": {
+                    "type": "string",
+                    "description": "Option name."
+                  },
+                  "maxItems": 50
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 40
+          },
+          "view": {
+            "type": "string",
+            "description": "First view type.",
+            "enum": [
+              "table",
+              "board",
+              "gallery",
+              "list",
+              "calendar"
+            ],
+            "default": "table"
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Open it in a tab.",
+            "default": true
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ databaseId: string }"
+    },
+    {
+      "name": "databases.addProperty",
+      "summary": "Add a property (column) to a database.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "name": {
+            "type": "string",
+            "description": "Property name.",
+            "maxLength": 100
+          },
+          "type": {
+            "type": "string",
+            "description": "Property type.",
+            "enum": [
+              "text",
+              "number",
+              "select",
+              "multiSelect",
+              "status",
+              "date",
+              "checkbox",
+              "url",
+              "email",
+              "phone",
+              "createdTime",
+              "lastEdited"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "description": "Options for select / multiSelect / status.",
+            "items": {
+              "type": "string",
+              "description": "Option name."
+            },
+            "maxItems": 50
+          }
+        },
+        "required": [
+          "databaseId",
+          "name",
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ propertyId: string }"
+    },
+    {
+      "name": "databases.addRow",
+      "summary": "Add a row; values are keyed by property name.",
+      "details": "Dates: ISO \"2026-03-01\". Selects: option name (created if missing). Multi-select: array of names. Checkbox: boolean.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "title": {
+            "type": "string",
+            "description": "Row title.",
+            "maxLength": 300
+          },
+          "values": {
+            "type": "object",
+            "description": "Property name → value.",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "databaseId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ rowId: string }"
+    },
+    {
+      "name": "databases.updateRow",
+      "summary": "Change a row's title and/or values (keyed by property name).",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "rowId": {
+            "type": "string",
+            "description": "Row (page) id."
+          },
+          "title": {
+            "type": "string",
+            "description": "New title.",
+            "maxLength": 300
+          },
+          "values": {
+            "type": "object",
+            "description": "Property name → value. null clears.",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "rowId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "databases.getView",
+      "summary": "Get one view with its filters, sorts, grouping, visible properties and calculations.",
+      "permission": "databases.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "viewId": {
+            "type": "string",
+            "description": "View id (defaults to the first view)."
+          }
+        },
+        "required": [
+          "databaseId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "DatabaseViewInfo"
+    },
+    {
+      "name": "databases.queryView",
+      "summary": "Read rows the way a view shows them (its filters and sorts applied), optionally with a search.",
+      "permission": "databases.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "viewId": {
+            "type": "string",
+            "description": "View id (defaults to the first view)."
+          },
+          "search": {
+            "type": "string",
+            "description": "Text search across all properties.",
+            "maxLength": 200
+          },
+          "filters": {
+            "type": "array",
+            "description": "Filter rules (replaces the view's filters). Select/status/multi-select values are option names; dates are ISO.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "property": {
+                  "type": "string",
+                  "description": "Property name or id (\"title\" or the title column's name for the title).",
+                  "maxLength": 100
+                },
+                "op": {
+                  "type": "string",
+                  "description": "Operator.",
+                  "enum": [
+                    "contains",
+                    "notContains",
+                    "is",
+                    "isNot",
+                    "startsWith",
+                    "endsWith",
+                    "isEmpty",
+                    "isNotEmpty",
+                    "eq",
+                    "neq",
+                    "gt",
+                    "lt",
+                    "gte",
+                    "lte",
+                    "before",
+                    "after",
+                    "onOrBefore",
+                    "onOrAfter"
+                  ]
+                },
+                "value": {
+                  "description": "Value to compare with (omit for isEmpty / isNotEmpty).",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "property",
+                "op"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 30
+          },
+          "filterMode": {
+            "type": "string",
+            "description": "and | or for `filters`.",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "sorts": {
+            "type": "array",
+            "description": "Sort rules, first wins (replaces the view's sorts).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "property": {
+                  "type": "string",
+                  "description": "Property name or id (\"title\" or the title column's name for the title).",
+                  "maxLength": 100
+                },
+                "direction": {
+                  "type": "string",
+                  "description": "Direction.",
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
+                  "default": "asc"
+                }
+              },
+              "required": [
+                "property"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 10
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum rows.",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 200
+          }
+        },
+        "required": [
+          "databaseId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "DatabaseRowInfo[]",
+      "example": "const late = await app.databases.queryView({ databaseId, filters: [{ property: \"Due\", op: \"before\", value: \"2026-01-01\" }], sorts: [{ property: \"Due\" }] });"
+    },
+    {
+      "name": "databases.addView",
+      "summary": "Add a view (table, board, gallery, list or calendar) with optional filters, sorts and grouping.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "name": {
+            "type": "string",
+            "description": "View name.",
+            "maxLength": 80
+          },
+          "type": {
+            "type": "string",
+            "description": "Layout.",
+            "enum": [
+              "table",
+              "board",
+              "gallery",
+              "list",
+              "calendar"
+            ],
+            "default": "table"
+          },
+          "filters": {
+            "type": "array",
+            "description": "Filter rules (replaces the view's filters). Select/status/multi-select values are option names; dates are ISO.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "property": {
+                  "type": "string",
+                  "description": "Property name or id (\"title\" or the title column's name for the title).",
+                  "maxLength": 100
+                },
+                "op": {
+                  "type": "string",
+                  "description": "Operator.",
+                  "enum": [
+                    "contains",
+                    "notContains",
+                    "is",
+                    "isNot",
+                    "startsWith",
+                    "endsWith",
+                    "isEmpty",
+                    "isNotEmpty",
+                    "eq",
+                    "neq",
+                    "gt",
+                    "lt",
+                    "gte",
+                    "lte",
+                    "before",
+                    "after",
+                    "onOrBefore",
+                    "onOrAfter"
+                  ]
+                },
+                "value": {
+                  "description": "Value to compare with (omit for isEmpty / isNotEmpty).",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "property",
+                "op"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 30
+          },
+          "filterMode": {
+            "type": "string",
+            "description": "Match all rules (and) or any (or).",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "sorts": {
+            "type": "array",
+            "description": "Sort rules, first wins (replaces the view's sorts).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "property": {
+                  "type": "string",
+                  "description": "Property name or id (\"title\" or the title column's name for the title).",
+                  "maxLength": 100
+                },
+                "direction": {
+                  "type": "string",
+                  "description": "Direction.",
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
+                  "default": "asc"
+                }
+              },
+              "required": [
+                "property"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 10
+          },
+          "groupBy": {
+            "type": "string",
+            "description": "Board/table grouping property (select, multi-select, status, checkbox). \"\" removes grouping.",
+            "maxLength": 100
+          },
+          "hiddenGroups": {
+            "type": "array",
+            "description": "Group values (option names) to hide on a board.",
+            "items": {
+              "type": "string",
+              "description": "Option name."
+            },
+            "maxItems": 100
+          },
+          "show": {
+            "type": "array",
+            "description": "Properties to show, in order (others are hidden).",
+            "items": {
+              "type": "string",
+              "description": "Property name or id (\"title\" or the title column's name for the title).",
+              "maxLength": 100
+            },
+            "maxItems": 100
+          },
+          "hide": {
+            "type": "array",
+            "description": "Properties to hide.",
+            "items": {
+              "type": "string",
+              "description": "Property name or id (\"title\" or the title column's name for the title).",
+              "maxLength": 100
+            },
+            "maxItems": 100
+          },
+          "order": {
+            "type": "array",
+            "description": "Property order (names or ids).",
+            "items": {
+              "type": "string",
+              "description": "Property name or id (\"title\" or the title column's name for the title).",
+              "maxLength": 100
+            },
+            "maxItems": 100
+          },
+          "widths": {
+            "type": "object",
+            "description": "Property → column width in px (table).",
+            "properties": {},
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "calcs": {
+            "type": "object",
+            "description": "Property → footer calculation (table).",
+            "properties": {},
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "none",
+                "countAll",
+                "countValues",
+                "countUnique",
+                "countEmpty",
+                "countNotEmpty",
+                "percentEmpty",
+                "percentNotEmpty",
+                "checked",
+                "unchecked",
+                "percentChecked",
+                "sum",
+                "average",
+                "median",
+                "min",
+                "max",
+                "range",
+                "earliest",
+                "latest"
+              ]
+            }
+          },
+          "dateProperty": {
+            "type": "string",
+            "description": "Date property for calendar views.",
+            "maxLength": 100
+          },
+          "cardPreview": {
+            "type": "string",
+            "description": "Card preview for board/gallery.",
+            "enum": [
+              "cover",
+              "none"
+            ]
+          },
+          "wrap": {
+            "type": "boolean",
+            "description": "Wrap long cell text."
+          }
+        },
+        "required": [
+          "databaseId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "DatabaseViewInfo",
+      "example": "await app.databases.addView({ databaseId, type: \"board\", name: \"By status\", groupBy: \"Status\", filters: [{ property: \"Done\", op: \"is\", value: false }] });"
+    },
+    {
+      "name": "databases.updateView",
+      "summary": "Change a view: name, layout, filters, sorts, grouping, visible properties, order, widths, calculations.",
+      "details": "Only the fields you pass change. `filters` and `sorts` replace the existing lists; pass [] to clear.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "viewId": {
+            "type": "string",
+            "description": "View id."
+          },
+          "name": {
+            "type": "string",
+            "description": "View name.",
+            "maxLength": 80
+          },
+          "type": {
+            "type": "string",
+            "description": "Layout.",
+            "enum": [
+              "table",
+              "board",
+              "gallery",
+              "list",
+              "calendar"
+            ]
+          },
+          "filters": {
+            "type": "array",
+            "description": "Filter rules (replaces the view's filters). Select/status/multi-select values are option names; dates are ISO.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "property": {
+                  "type": "string",
+                  "description": "Property name or id (\"title\" or the title column's name for the title).",
+                  "maxLength": 100
+                },
+                "op": {
+                  "type": "string",
+                  "description": "Operator.",
+                  "enum": [
+                    "contains",
+                    "notContains",
+                    "is",
+                    "isNot",
+                    "startsWith",
+                    "endsWith",
+                    "isEmpty",
+                    "isNotEmpty",
+                    "eq",
+                    "neq",
+                    "gt",
+                    "lt",
+                    "gte",
+                    "lte",
+                    "before",
+                    "after",
+                    "onOrBefore",
+                    "onOrAfter"
+                  ]
+                },
+                "value": {
+                  "description": "Value to compare with (omit for isEmpty / isNotEmpty).",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "property",
+                "op"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 30
+          },
+          "filterMode": {
+            "type": "string",
+            "description": "Match all rules (and) or any (or).",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "sorts": {
+            "type": "array",
+            "description": "Sort rules, first wins (replaces the view's sorts).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "property": {
+                  "type": "string",
+                  "description": "Property name or id (\"title\" or the title column's name for the title).",
+                  "maxLength": 100
+                },
+                "direction": {
+                  "type": "string",
+                  "description": "Direction.",
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
+                  "default": "asc"
+                }
+              },
+              "required": [
+                "property"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 10
+          },
+          "groupBy": {
+            "type": "string",
+            "description": "Board/table grouping property (select, multi-select, status, checkbox). \"\" removes grouping.",
+            "maxLength": 100
+          },
+          "hiddenGroups": {
+            "type": "array",
+            "description": "Group values (option names) to hide on a board.",
+            "items": {
+              "type": "string",
+              "description": "Option name."
+            },
+            "maxItems": 100
+          },
+          "show": {
+            "type": "array",
+            "description": "Properties to show, in order (others are hidden).",
+            "items": {
+              "type": "string",
+              "description": "Property name or id (\"title\" or the title column's name for the title).",
+              "maxLength": 100
+            },
+            "maxItems": 100
+          },
+          "hide": {
+            "type": "array",
+            "description": "Properties to hide.",
+            "items": {
+              "type": "string",
+              "description": "Property name or id (\"title\" or the title column's name for the title).",
+              "maxLength": 100
+            },
+            "maxItems": 100
+          },
+          "order": {
+            "type": "array",
+            "description": "Property order (names or ids).",
+            "items": {
+              "type": "string",
+              "description": "Property name or id (\"title\" or the title column's name for the title).",
+              "maxLength": 100
+            },
+            "maxItems": 100
+          },
+          "widths": {
+            "type": "object",
+            "description": "Property → column width in px (table).",
+            "properties": {},
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "calcs": {
+            "type": "object",
+            "description": "Property → footer calculation (table).",
+            "properties": {},
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "none",
+                "countAll",
+                "countValues",
+                "countUnique",
+                "countEmpty",
+                "countNotEmpty",
+                "percentEmpty",
+                "percentNotEmpty",
+                "checked",
+                "unchecked",
+                "percentChecked",
+                "sum",
+                "average",
+                "median",
+                "min",
+                "max",
+                "range",
+                "earliest",
+                "latest"
+              ]
+            }
+          },
+          "dateProperty": {
+            "type": "string",
+            "description": "Date property for calendar views.",
+            "maxLength": 100
+          },
+          "cardPreview": {
+            "type": "string",
+            "description": "Card preview for board/gallery.",
+            "enum": [
+              "cover",
+              "none"
+            ]
+          },
+          "wrap": {
+            "type": "boolean",
+            "description": "Wrap long cell text."
+          }
+        },
+        "required": [
+          "databaseId",
+          "viewId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "DatabaseViewInfo"
+    },
+    {
+      "name": "databases.removeView",
+      "summary": "Remove a view (a database keeps at least one).",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "viewId": {
+            "type": "string",
+            "description": "View id."
+          }
+        },
+        "required": [
+          "databaseId",
+          "viewId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "databases.duplicateView",
+      "summary": "Copy a view with all its settings.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "viewId": {
+            "type": "string",
+            "description": "View id."
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the copy.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "databaseId",
+          "viewId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "DatabaseViewInfo"
+    },
+    {
+      "name": "databases.moveView",
+      "summary": "Move a view to another position in the view tabs.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "viewId": {
+            "type": "string",
+            "description": "View id."
+          },
+          "index": {
+            "type": "integer",
+            "description": "New position (0 = first).",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "databaseId",
+          "viewId",
+          "index"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "databases.updateProperty",
+      "summary": "Rename a property, change its type, number format or select options.",
+      "details": "`options` replaces the option list for select / multi-select / status; existing options keep their ids when the name matches. Changing the type converts existing values where possible.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "property": {
+            "type": "string",
+            "description": "Property name or id (\"title\" or the title column's name for the title).",
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "New name.",
+            "maxLength": 100
+          },
+          "type": {
+            "type": "string",
+            "description": "New type.",
+            "enum": [
+              "text",
+              "number",
+              "select",
+              "multiSelect",
+              "status",
+              "date",
+              "checkbox",
+              "url",
+              "email",
+              "phone",
+              "createdTime",
+              "lastEdited"
+            ]
+          },
+          "format": {
+            "type": "string",
+            "description": "Number format.",
+            "enum": [
+              "number",
+              "commas",
+              "percent",
+              "dollar",
+              "euro",
+              "pound",
+              "yen"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "description": "Options (select / multi-select / status).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Option name.",
+                  "maxLength": 100
+                },
+                "color": {
+                  "type": "string",
+                  "description": "Color name.",
+                  "enum": [
+                    "default",
+                    "gray",
+                    "brown",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "purple",
+                    "pink",
+                    "red"
+                  ]
+                },
+                "group": {
+                  "type": "string",
+                  "description": "Status group.",
+                  "enum": [
+                    "todo",
+                    "inProgress",
+                    "complete"
+                  ]
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "databaseId",
+          "property"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "DatabaseSchemaInfo"
+    },
+    {
+      "name": "databases.removeProperty",
+      "summary": "Delete a property and its values from every row.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "property": {
+            "type": "string",
+            "description": "Property name or id (\"title\" or the title column's name for the title).",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "databaseId",
+          "property"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "databases.deleteRows",
+      "summary": "Move rows to the trash.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "rowIds": {
+            "type": "array",
+            "description": "Row ids.",
+            "items": {
+              "type": "string",
+              "description": "Row id."
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "rowIds"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ deleted: number }"
+    },
+    {
+      "name": "databases.rename",
+      "summary": "Rename a database or its title column.",
+      "permission": "databases.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string",
+            "description": "Database id."
+          },
+          "title": {
+            "type": "string",
+            "description": "New database title.",
+            "maxLength": 300
+          },
+          "titleColumn": {
+            "type": "string",
+            "description": "New name of the title column.",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "databaseId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "workspaces.list",
+      "summary": "List workspaces.",
+      "permission": "workspaces.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "WorkspaceInfo[]"
+    },
+    {
+      "name": "workspaces.current",
+      "summary": "Get the open workspace.",
+      "permission": "workspaces.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "WorkspaceInfo | null"
+    },
+    {
+      "name": "workspaces.open",
+      "summary": "Switch to another workspace.",
+      "permission": "workspaces.write",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace id."
+          }
+        },
+        "required": [
+          "workspaceId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "workspaces.create",
+      "summary": "Create a workspace and switch to it.",
+      "permission": "workspaces.write",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name.",
+            "maxLength": 80,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "workspaces.rename",
+      "summary": "Rename a workspace.",
+      "permission": "workspaces.write",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "description": "Workspace id."
+          },
+          "name": {
+            "type": "string",
+            "description": "New name.",
+            "maxLength": 80,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "workspaceId",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "navigation.openPage",
+      "summary": "Open a page in the focused pane.",
+      "permission": "navigation",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Page id."
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "navigation.openHome",
+      "summary": "Open a Home tab.",
+      "permission": "navigation",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "navigation.back",
+      "summary": "Go back in history.",
+      "permission": "navigation",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "navigation.forward",
+      "summary": "Go forward in history.",
+      "permission": "navigation",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "tabs.list",
+      "summary": "List open tabs (page tabs and Home tabs).",
+      "permission": "navigation",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "TabInfo[]"
+    },
+    {
+      "name": "tabs.close",
+      "summary": "Close a tab.",
+      "permission": "navigation",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "tabId": {
+            "type": "string",
+            "description": "Tab id (a page id or a Home tab id)."
+          }
+        },
+        "required": [
+          "tabId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "layout.get",
+      "summary": "Get panes, sidebars and their sizes.",
+      "permission": "layout",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "LayoutInfo"
+    },
+    {
+      "name": "layout.split",
+      "summary": "Split a pane; the new pane opens Home.",
+      "permission": "layout",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "paneId": {
+            "type": "string",
+            "description": "Pane id. Defaults to the focused pane."
+          },
+          "side": {
+            "type": "string",
+            "description": "Side of the new pane.",
+            "enum": [
+              "left",
+              "right",
+              "top",
+              "bottom"
+            ]
+          }
+        },
+        "required": [
+          "side"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "layout.closePane",
+      "summary": "Close a pane and its tabs.",
+      "permission": "layout",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "paneId": {
+            "type": "string",
+            "description": "Pane id."
+          }
+        },
+        "required": [
+          "paneId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "layout.toggleMaximize",
+      "summary": "Maximize a pane or restore it.",
+      "permission": "layout",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "paneId": {
+            "type": "string",
+            "description": "Pane id. Defaults to the focused pane."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "layout.setPanels",
+      "summary": "Show/hide the sidebars and rail, resize them, or switch their tabs.",
+      "permission": "layout",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "leftOpen": {
+            "type": "boolean",
+            "description": "Show the left sidebar."
+          },
+          "rightOpen": {
+            "type": "boolean",
+            "description": "Show the right sidebar."
+          },
+          "railOpen": {
+            "type": "boolean",
+            "description": "Show the rail."
+          },
+          "leftWidth": {
+            "type": "integer",
+            "description": "Left sidebar width (220–420).",
+            "minimum": 220,
+            "maximum": 420
+          },
+          "rightWidth": {
+            "type": "integer",
+            "description": "Right sidebar width (240–440).",
+            "minimum": 240,
+            "maximum": 440
+          },
+          "leftTab": {
+            "type": "string",
+            "description": "Left sidebar tab.",
+            "enum": [
+              "tree",
+              "favorites",
+              "recent",
+              "trash"
+            ]
+          },
+          "rightTab": {
+            "type": "string",
+            "description": "Right sidebar tab.",
+            "enum": [
+              "outline",
+              "backlinks",
+              "info",
+              "assistant"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "layout.openOverlay",
+      "summary": "Open an app dialog (command palette, library, plugins, settings, workspaces) or close it.",
+      "permission": "layout",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "overlay": {
+            "type": "string",
+            "description": "Dialog to open; \"none\" closes.",
+            "enum": [
+              "palette",
+              "library",
+              "plugins",
+              "settings",
+              "workspaces",
+              "none"
+            ]
+          }
+        },
+        "required": [
+          "overlay"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "search.query",
+      "summary": "Full-text search across the open workspace.",
+      "permission": "search.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search text.",
+            "maxLength": 500,
+            "minLength": 1
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum hits.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "SearchHitInfo[]"
+    },
+    {
+      "name": "assets.pickImage",
+      "summary": "Ask the user to pick an image; returns its URL.",
+      "permission": "assets.write",
+      "tier": "content",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "string | null"
+    },
+    {
+      "name": "assets.pickFile",
+      "summary": "Ask the user to pick a file; returns its URL.",
+      "permission": "assets.write",
+      "tier": "content",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "string | null"
+    },
+    {
+      "name": "settings.get",
+      "summary": "Read the plugin's saved settings.",
+      "permission": "settings.read",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "Record<string, unknown>"
+    },
+    {
+      "name": "settings.set",
+      "summary": "Merge a patch into the plugin's saved settings.",
+      "permission": "settings.write",
+      "tier": "content",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "patch": {
+            "type": "object",
+            "description": "Keys to set; null removes.",
+            "properties": {},
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "patch"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "Record<string, unknown>"
+    },
+    {
+      "name": "preferences.get",
+      "summary": "Read app preferences (theme, fonts, page width, autosave, …).",
+      "permission": "preferences",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "Preferences"
+    },
+    {
+      "name": "preferences.update",
+      "summary": "Change app preferences.",
+      "permission": "preferences",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "theme": {
+            "type": "string",
+            "description": "Theme.",
+            "enum": [
+              "light",
+              "dark",
+              "system"
+            ]
+          },
+          "editorFont": {
+            "type": "string",
+            "description": "Reading font.",
+            "enum": [
+              "serif",
+              "sans"
+            ]
+          },
+          "fontSize": {
+            "type": "integer",
+            "description": "Editor font size (15–20).",
+            "minimum": 15,
+            "maximum": 20
+          },
+          "lineHeight": {
+            "type": "number",
+            "description": "Editor line height (1.45–1.9).",
+            "minimum": 1.45,
+            "maximum": 1.9
+          },
+          "pageWidth": {
+            "type": "integer",
+            "description": "Page width in px (640–900).",
+            "minimum": 640,
+            "maximum": 900
+          },
+          "fullWidth": {
+            "type": "boolean",
+            "description": "Use the full pane width."
+          },
+          "autosaveDelay": {
+            "type": "integer",
+            "description": "Autosave delay in ms (300–2000).",
+            "minimum": 300,
+            "maximum": 2000
+          },
+          "spellcheck": {
+            "type": "boolean",
+            "description": "Spellcheck."
+          },
+          "reduceMotion": {
+            "type": "boolean",
+            "description": "Reduce motion."
+          },
+          "showStats": {
+            "type": "boolean",
+            "description": "Show word count in the status bar."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "Preferences"
+    },
+    {
+      "name": "appearance.get",
+      "summary": "Get the current customizations (tokens, CSS snippets, component styles).",
+      "permission": "appearance",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "Customizations"
+    },
+    {
+      "name": "appearance.listTokens",
+      "summary": "List the design tokens with their default light and dark values.",
+      "permission": "appearance",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "TokenInfo[]"
+    },
+    {
+      "name": "appearance.listComponents",
+      "summary": "List the app components that can be styled or hidden.",
+      "permission": "appearance",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "ComponentInfo[]"
+    },
+    {
+      "name": "appearance.setTokens",
+      "summary": "Override design tokens (colors, fonts, radii, sizes) for light and/or dark.",
+      "details": "Keys are token names without the leading dashes, e.g. { accent: \"#2f6fdf\", \"radius-md\": \"12px\" }. A null value removes an override.",
+      "permission": "appearance",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "light": {
+            "type": "object",
+            "description": "Token → CSS value for the light theme.",
+            "properties": {},
+            "additionalProperties": true
+          },
+          "dark": {
+            "type": "object",
+            "description": "Token → CSS value for the dark theme.",
+            "properties": {},
+            "additionalProperties": true
+          },
+          "both": {
+            "type": "object",
+            "description": "Token → CSS value for both themes.",
+            "properties": {},
+            "additionalProperties": true
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "Customizations",
+      "example": "await app.appearance.setTokens({ both: { accent: \"#2f6fdf\" }, dark: { bg: \"#111418\" } });"
+    },
+    {
+      "name": "appearance.styleComponent",
+      "summary": "Style or hide an app component (see appearance.listComponents).",
+      "details": "`css` is a list of declarations applied to the component's root, e.g. \"border-radius: 16px; background: var(--bg-sunken)\". Use `rules` for nested selectors.",
+      "permission": "appearance",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "component": {
+            "type": "string",
+            "description": "Component id."
+          },
+          "css": {
+            "type": "string",
+            "description": "CSS declarations for the component root. \"\" clears.",
+            "maxLength": 4000
+          },
+          "rules": {
+            "type": "string",
+            "description": "Extra CSS rules; `&` is replaced by the component selector.",
+            "maxLength": 8000
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Hide the component."
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "component"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "Customizations"
+    },
+    {
+      "name": "appearance.addCss",
+      "summary": "Add or replace a named CSS snippet applied to the whole app.",
+      "permission": "appearance",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Snippet id (letters, digits, dashes).",
+            "maxLength": 48,
+            "minLength": 1
+          },
+          "css": {
+            "type": "string",
+            "description": "CSS.",
+            "maxLength": 50000
+          },
+          "label": {
+            "type": "string",
+            "description": "Human label.",
+            "maxLength": 80
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enabled.",
+            "default": true
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id",
+          "css"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "Customizations"
+    },
+    {
+      "name": "appearance.removeCss",
+      "summary": "Remove a CSS snippet.",
+      "permission": "appearance",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Snippet id."
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "Customizations"
+    },
+    {
+      "name": "appearance.reset",
+      "summary": "Reset customizations (all, or only tokens, CSS snippets or component styles).",
+      "permission": "appearance",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "description": "What to reset.",
+            "enum": [
+              "all",
+              "tokens",
+              "css",
+              "components"
+            ],
+            "default": "all"
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "Customizations"
+    },
+    {
+      "name": "appearance.listLayers",
+      "summary": "List customization layers: switchable bundles of looks, sidebar tabs, status widgets, block and page types.",
+      "details": "The assistant writes each chat's changes to its own layer; plugins get one too. Users manage them in Plugins → Created.",
+      "permission": "appearance",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "LayerInfo[]"
+    },
+    {
+      "name": "appearance.setLayer",
+      "summary": "Create a layer or change its name, description or on/off state.",
+      "permission": "appearance",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Layer id (lowercase letters, digits, dots, dashes, colons).",
+            "maxLength": 80,
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Name.",
+            "maxLength": 80
+          },
+          "description": {
+            "type": "string",
+            "description": "What it changes.",
+            "maxLength": 400
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "On or off."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "LayerInfo"
+    },
+    {
+      "name": "appearance.setLayerPermissions",
+      "summary": "Set the App API permissions a layer's HTML views (tabs, widgets, blocks, pages) run with.",
+      "details": "By default layer views can read pages, databases and the editor, navigate and notify. Granting write permissions lets their scripts change content.",
+      "permission": "appearance",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Layer id."
+          },
+          "permissions": {
+            "type": "array",
+            "description": "Permission ids.",
+            "items": {
+              "type": "string",
+              "description": "Permission id."
+            },
+            "maxItems": 40
+          }
+        },
+        "required": [
+          "id",
+          "permissions"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "LayerInfo"
+    },
+    {
+      "name": "appearance.removeLayer",
+      "summary": "Delete a layer and everything it adds.",
+      "permission": "appearance",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Layer id."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "commands.list",
+      "summary": "List every command in the command palette.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Filter by title or category."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "CommandInfo[]"
+    },
+    {
+      "name": "commands.execute",
+      "summary": "Run a command by id.",
+      "permission": "commands.execute",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Command id."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "ui.notify",
+      "summary": "Show a toast notification.",
+      "permission": "ui.notify",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Message.",
+            "maxLength": 300,
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "description": "Tone.",
+            "enum": [
+              "info",
+              "success",
+              "error"
+            ],
+            "default": "info"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "ui.confirm",
+      "summary": "Ask the user to confirm something.",
+      "permission": "ui.modal",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title.",
+            "maxLength": 120
+          },
+          "message": {
+            "type": "string",
+            "description": "Message.",
+            "maxLength": 2000
+          },
+          "confirmLabel": {
+            "type": "string",
+            "description": "Confirm button label.",
+            "maxLength": 40
+          },
+          "danger": {
+            "type": "boolean",
+            "description": "Destructive styling."
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "boolean"
+    },
+    {
+      "name": "ui.prompt",
+      "summary": "Ask the user to type a value. Resolves to null when cancelled.",
+      "permission": "ui.modal",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title.",
+            "maxLength": 120
+          },
+          "message": {
+            "type": "string",
+            "description": "Message.",
+            "maxLength": 2000
+          },
+          "placeholder": {
+            "type": "string",
+            "description": "Placeholder.",
+            "maxLength": 120
+          },
+          "value": {
+            "type": "string",
+            "description": "Initial value.",
+            "maxLength": 2000
+          },
+          "multiline": {
+            "type": "boolean",
+            "description": "Multi-line input."
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "string | null"
+    },
+    {
+      "name": "ui.pick",
+      "summary": "Ask the user to pick one item from a list. Resolves to the id or null.",
+      "permission": "ui.modal",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title.",
+            "maxLength": 120
+          },
+          "items": {
+            "type": "array",
+            "description": "Choices.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Id."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "Label.",
+                  "maxLength": 120
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Hint.",
+                  "maxLength": 200
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 200
+          }
+        },
+        "required": [
+          "title",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "string | null"
+    },
+    {
+      "name": "ui.ask",
+      "summary": "Ask the user a question with choices and/or a free-text answer, and wait for the reply.",
+      "details": "For the assistant this renders an inline question card in the chat; for plugins a dialog. Use it to clarify requirements or let the user choose between options instead of guessing. Returns { answer, choices, cancelled }.",
+      "permission": "ui.modal",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question.",
+            "maxLength": 1000,
+            "minLength": 1
+          },
+          "options": {
+            "type": "array",
+            "description": "Choices.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "description": "Choice label.",
+                  "maxLength": 120
+                },
+                "description": {
+                  "type": "string",
+                  "description": "One-line explanation.",
+                  "maxLength": 300
+                }
+              },
+              "required": [
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 8
+          },
+          "multiple": {
+            "type": "boolean",
+            "description": "Allow picking several choices.",
+            "default": false
+          },
+          "allowText": {
+            "type": "boolean",
+            "description": "Allow a typed answer (always on when there are no options).",
+            "default": true
+          },
+          "placeholder": {
+            "type": "string",
+            "description": "Placeholder for the typed answer.",
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "AskResult"
+    },
+    {
+      "name": "ui.setStatus",
+      "summary": "Show text in the status bar (declare the item in manifest.contributes.statusItems or by id).",
+      "permission": "ui.status",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "description": "Status item id."
+          },
+          "text": {
+            "type": "string",
+            "description": "Text; \"\" hides it.",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "description": "Tooltip.",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "itemId",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "ui.setPanel",
+      "summary": "Render a sidebar panel from Markdown, with optional action buttons.",
+      "details": "Buttons raise the panel:action event with the action id.",
+      "permission": "ui.panel",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "panelId": {
+            "type": "string",
+            "description": "Panel id."
+          },
+          "title": {
+            "type": "string",
+            "description": "Panel title.",
+            "maxLength": 80
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Panel content.",
+            "maxLength": 20000
+          },
+          "actions": {
+            "type": "array",
+            "description": "Buttons.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Action id."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "Label.",
+                  "maxLength": 40
+                },
+                "primary": {
+                  "type": "boolean",
+                  "description": "Primary style."
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 6
+          }
+        },
+        "required": [
+          "panelId",
+          "markdown"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "ui.addStyles",
+      "summary": "Add CSS for the plugin's own look (replaces the plugin's previous styles).",
+      "permission": "ui.styles",
+      "tier": "app",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "css": {
+            "type": "string",
+            "description": "CSS.",
+            "maxLength": 100000
+          }
+        },
+        "required": [
+          "css"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "clipboard.readText",
+      "summary": "Read text from the clipboard.",
+      "permission": "clipboard",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "string"
+    },
+    {
+      "name": "clipboard.writeText",
+      "summary": "Copy text to the clipboard.",
+      "permission": "clipboard",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Text.",
+            "maxLength": 1000000
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "web.search",
+      "summary": "Search the web (free, no API key). Returns titles, URLs and snippets.",
+      "details": "Uses DuckDuckGo with Wikipedia as a fallback. Fetch a result's URL with web.fetch to read it.",
+      "permission": "network",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query.",
+            "maxLength": 400,
+            "minLength": 1
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results.",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 8
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "WebSearchResult"
+    },
+    {
+      "name": "web.fetch",
+      "summary": "Fetch a web page and return its readable text, title and links.",
+      "permission": "network",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "http(s) URL.",
+            "maxLength": 4000,
+            "minLength": 1
+          },
+          "maxChars": {
+            "type": "integer",
+            "description": "Maximum characters of text.",
+            "minimum": 500,
+            "maximum": 100000,
+            "default": 20000
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "WebPage"
+    },
+    {
+      "name": "network.request",
+      "summary": "Make an HTTP request (any method, headers and body) through the app.",
+      "details": "Requests to localhost and private networks are blocked. Bodies are text; binary responses come back base64 encoded.",
+      "permission": "network",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "http(s) URL.",
+            "maxLength": 4000,
+            "minLength": 1
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method.",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE",
+              "HEAD"
+            ],
+            "default": "GET"
+          },
+          "headers": {
+            "type": "object",
+            "description": "Request headers.",
+            "properties": {},
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "body": {
+            "type": "string",
+            "description": "Request body.",
+            "maxLength": 2000000
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "HttpResponse"
+    },
+    {
+      "name": "sidebar.list",
+      "summary": "List the right sidebar's tab groups (stacked panels) and every available tab.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "SidebarInfo"
+    },
+    {
+      "name": "sidebar.setTab",
+      "summary": "Add or update a right-sidebar tab with Markdown (+ buttons) or a full HTML view.",
+      "details": "Tabs from plugins live while the plugin runs; tabs from the assistant are saved in the chat's customization layer. A new tab is added to the first group unless `group` says otherwise; `split: true` opens it in a new group below.",
+      "permission": "ui.panel",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Tab id, unique for this plugin or layer (letters, digits, dots, dashes).",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "description": "Tab title.",
+            "maxLength": 60,
+            "minLength": 1
+          },
+          "icon": {
+            "type": "string",
+            "description": "Icon: an emoji or a Lucide icon name such as \"chart-line\".",
+            "maxLength": 60
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Markdown content.",
+            "maxLength": 40000
+          },
+          "actions": {
+            "type": "array",
+            "description": "Buttons under Markdown content; pressing one raises panel:action (plugins).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Action id."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "Label.",
+                  "maxLength": 40
+                },
+                "primary": {
+                  "type": "boolean",
+                  "description": "Primary style."
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 8
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Show the sidebar and activate the tab.",
+            "default": false
+          },
+          "split": {
+            "type": "boolean",
+            "description": "Open in a new group below the others.",
+            "default": false
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "SidebarTabInfo",
+      "example": "await app.sidebar.setTab({ id: \"tasks\", title: \"Tasks\", icon: \"list-checks\", html: \"<ul id=list class=n-list></ul><script>noteral.app.databases.queryRows({databaseId:'…'}).then(r=>list.innerHTML=r.map(x=>'<li>'+x.title).join(''))</script>\", open: true });"
+    },
+    {
+      "name": "sidebar.removeTab",
+      "summary": "Remove a tab added with sidebar.setTab.",
+      "permission": "ui.panel",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Tab id."
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "sidebar.openTab",
+      "summary": "Show the right sidebar and activate a tab (built-in: outline, backlinks, info, assistant).",
+      "permission": "layout",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Tab id or key (see sidebar.list)."
+          },
+          "split": {
+            "type": "boolean",
+            "description": "Move it into a new group below.",
+            "default": false
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "sidebar.setLayout",
+      "summary": "Arrange the right sidebar: stacked groups of tabs, their order, sizes and active tabs.",
+      "details": "Each group is a panel with its own tab strip; groups stack top to bottom and `size` is a relative height. Tabs not listed stay in the last group.",
+      "permission": "layout",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "description": "Groups, top to bottom (max 6).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tabs": {
+                  "type": "array",
+                  "description": "Tab keys in order.",
+                  "items": {
+                    "type": "string",
+                    "description": "Tab key."
+                  },
+                  "maxItems": 40
+                },
+                "active": {
+                  "type": "string",
+                  "description": "Active tab key."
+                },
+                "size": {
+                  "type": "number",
+                  "description": "Relative height (default 1).",
+                  "minimum": 0.1,
+                  "maximum": 10
+                }
+              },
+              "required": [
+                "tabs"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 6
+          },
+          "width": {
+            "type": "integer",
+            "description": "Sidebar width in px.",
+            "minimum": 240,
+            "maximum": 900
+          }
+        },
+        "required": [
+          "groups"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "SidebarInfo"
+    },
+    {
+      "name": "sidebar.moveTab",
+      "summary": "Move a tab to another group (or a new group) and position.",
+      "permission": "layout",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Tab key."
+          },
+          "group": {
+            "type": "integer",
+            "description": "Target group index; -1 = new group at the bottom.",
+            "minimum": -1,
+            "maximum": 5
+          },
+          "index": {
+            "type": "integer",
+            "description": "Position in the group.",
+            "minimum": 0,
+            "maximum": 40
+          }
+        },
+        "required": [
+          "id",
+          "group"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "SidebarInfo"
+    },
+    {
+      "name": "statusBar.list",
+      "summary": "List status bar widgets (built-in and custom).",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "StatusWidgetInfo[]"
+    },
+    {
+      "name": "statusBar.setWidget",
+      "summary": "Add or update a status bar widget: text with an icon and click command, or a small HTML view.",
+      "details": "HTML widgets render in a 22px-high sandboxed frame (`width` px wide) and can call the App API with the owner's permissions.",
+      "permission": "ui.status",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Widget id.",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "description": "Text.",
+            "maxLength": 160
+          },
+          "tooltip": {
+            "type": "string",
+            "description": "Tooltip.",
+            "maxLength": 300
+          },
+          "icon": {
+            "type": "string",
+            "description": "Icon: an emoji or a Lucide icon name such as \"chart-line\".",
+            "maxLength": 60
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "width": {
+            "type": "integer",
+            "description": "Width in px for HTML widgets.",
+            "minimum": 16,
+            "maximum": 480,
+            "default": 120
+          },
+          "side": {
+            "type": "string",
+            "description": "Side.",
+            "enum": [
+              "left",
+              "right"
+            ],
+            "default": "right"
+          },
+          "order": {
+            "type": "integer",
+            "description": "Order (lower first).",
+            "minimum": -100,
+            "maximum": 100,
+            "default": 0
+          },
+          "command": {
+            "type": "string",
+            "description": "Command id to run on click (see commands.list).",
+            "maxLength": 200
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "StatusWidgetInfo"
+    },
+    {
+      "name": "statusBar.removeWidget",
+      "summary": "Remove a status bar widget.",
+      "permission": "ui.status",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Widget id."
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "blocks.registerType",
+      "summary": "Register a custom editor block type rendered by an HTML view; it appears in the slash menu.",
+      "details": "Each block stores JSON data in the page. In the view, read it from `noteral.props.data` and save changes with `noteral.setData(next)`; `noteral.props.editable` says whether the page can be edited. Keep `type` stable: documents reference it.",
+      "permission": "blocks",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type id, e.g. \"kanban-mini\" (lowercase letters, digits, dots, dashes).",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "description": "Name in the slash menu.",
+            "maxLength": 60,
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Slash menu hint.",
+            "maxLength": 160
+          },
+          "icon": {
+            "type": "string",
+            "description": "Icon: an emoji or a Lucide icon name such as \"chart-line\".",
+            "maxLength": 60
+          },
+          "keywords": {
+            "type": "array",
+            "description": "Extra search words.",
+            "items": {
+              "type": "string",
+              "description": "Keyword."
+            },
+            "maxItems": 12
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "defaultData": {
+            "description": "Data for new blocks.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "height": {
+            "type": "integer",
+            "description": "Initial height in px (the view auto-resizes).",
+            "minimum": 24,
+            "maximum": 2000,
+            "default": 120
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "html"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "BlockTypeInfo",
+      "example": "await app.blocks.registerType({ type: \"counter\", title: \"Counter\", icon: \"plus\", defaultData: { n: 0 }, html: \"<button class=n-btn id=b></button><script>const r=()=>b.textContent='Clicked '+noteral.props.data.n;r();noteral.onProps(r);b.onclick=()=>noteral.setData({n:noteral.props.data.n+1})</script>\" });"
+    },
+    {
+      "name": "blocks.unregisterType",
+      "summary": "Remove a custom block type (existing blocks show a placeholder).",
+      "permission": "blocks",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type id."
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "blocks.listTypes",
+      "summary": "List custom block types.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "BlockTypeInfo[]"
+    },
+    {
+      "name": "blocks.insert",
+      "summary": "Insert a custom block into the open page.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Custom block type."
+          },
+          "data": {
+            "description": "Block data (defaults to the type's defaultData).",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "after": {
+            "type": "string",
+            "description": "Insert after this block id (default: end of page)."
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ blockId: string }"
+    },
+    {
+      "name": "blocks.setData",
+      "summary": "Replace the data of a custom block in the open page.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "description": "Block id."
+          },
+          "data": {
+            "description": "New data.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "required": [
+          "blockId",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "nodes.registerType",
+      "summary": "Register a custom page type for the page tree, opened in a full-page HTML view.",
+      "details": "Items of this type are created with nodes.create or from the tree's New menu. The view gets `noteral.props` = { pageId, title, data, editable } and saves with `noteral.setData(next)`. Items can have children like folders.",
+      "permission": "nodes",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type id (lowercase letters, digits, dots, dashes).",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "description": "Type name, e.g. \"Kanban board\".",
+            "maxLength": 60,
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Shown in the New menu.",
+            "maxLength": 160
+          },
+          "icon": {
+            "type": "string",
+            "description": "Icon: an emoji or a Lucide icon name such as \"chart-line\".",
+            "maxLength": 60
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "defaultData": {
+            "description": "Data for new items.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "html"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "NodeTypeInfo"
+    },
+    {
+      "name": "nodes.unregisterType",
+      "summary": "Remove a custom page type (existing items show a placeholder).",
+      "permission": "nodes",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type id."
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "nodes.listTypes",
+      "summary": "List custom page types.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "NodeTypeInfo[]"
+    },
+    {
+      "name": "nodes.create",
+      "summary": "Create an item of a custom page type in the tree.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Custom page type."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title.",
+            "maxLength": 300
+          },
+          "parentId": {
+            "type": "string",
+            "description": "Parent page/folder id."
+          },
+          "data": {
+            "description": "Initial data (defaults to the type's defaultData).",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Open it.",
+            "default": true
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ pageId: string }"
+    },
+    {
+      "name": "nodes.getData",
+      "summary": "Read a custom item's type and data.",
+      "permission": "pages.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Item id."
+          }
+        },
+        "required": [
+          "pageId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ type: string; data: unknown }"
+    },
+    {
+      "name": "nodes.setData",
+      "summary": "Replace a custom item's data.",
+      "permission": "pages.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pageId": {
+            "type": "string",
+            "description": "Item id."
+          },
+          "data": {
+            "description": "New data.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "required": [
+          "pageId",
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "home.listViews",
+      "summary": "List Home views (built-in templates and custom views).",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "HomeViewSummary[]"
+    },
+    {
+      "name": "home.widgetTypes",
+      "summary": "List Home widget types with their default sizes.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "HomeWidgetTypeInfo[]"
+    },
+    {
+      "name": "home.getView",
+      "summary": "Get a custom Home view with all widgets and settings.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "description": "Custom view id."
+          }
+        },
+        "required": [
+          "viewId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "HomeViewInfo"
+    },
+    {
+      "name": "home.createView",
+      "summary": "Create a custom Home view (empty, from a template layout, or a copy).",
+      "permission": "home",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "View name.",
+            "maxLength": 40
+          },
+          "from": {
+            "type": "string",
+            "description": "Copy this custom view id instead of starting from the default layout."
+          },
+          "empty": {
+            "type": "boolean",
+            "description": "Start with no widgets."
+          },
+          "open": {
+            "type": "boolean",
+            "description": "Open it in the active Home tab.",
+            "default": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "HomeViewInfo"
+    },
+    {
+      "name": "home.updateView",
+      "summary": "Change a custom view's settings: name, width, gap, card style, radius, shadow, font, accent, CSS.",
+      "details": "`css` is scoped to the view: `&` is the Home view root, and `.home-card` / `[data-widget-type=…]` target cards.",
+      "permission": "home",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "description": "Custom view id."
+          },
+          "name": {
+            "type": "string",
+            "description": "Name.",
+            "maxLength": 40
+          },
+          "title": {
+            "type": "string",
+            "description": "Greeting headline override.",
+            "maxLength": 120
+          },
+          "width": {
+            "type": "string",
+            "description": "Content width.",
+            "enum": [
+              "narrow",
+              "wide",
+              "full"
+            ]
+          },
+          "gap": {
+            "type": "string",
+            "description": "Spacing.",
+            "enum": [
+              "tight",
+              "normal",
+              "roomy"
+            ]
+          },
+          "cards": {
+            "type": "string",
+            "description": "Default card style.",
+            "enum": [
+              "glass",
+              "solid",
+              "outline",
+              "flat"
+            ]
+          },
+          "radius": {
+            "type": "integer",
+            "description": "Card radius px.",
+            "minimum": 0,
+            "maximum": 28
+          },
+          "shadow": {
+            "type": "string",
+            "description": "Card shadow.",
+            "enum": [
+              "none",
+              "soft",
+              "lifted"
+            ]
+          },
+          "font": {
+            "type": "string",
+            "description": "Font.",
+            "enum": [
+              "serif",
+              "sans",
+              "mono"
+            ]
+          },
+          "valign": {
+            "type": "string",
+            "description": "Vertical alignment.",
+            "enum": [
+              "top",
+              "center"
+            ]
+          },
+          "accent": {
+            "type": "string",
+            "description": "Accent #rrggbb (\"\" resets).",
+            "maxLength": 20
+          },
+          "css": {
+            "type": "string",
+            "description": "Custom CSS for the view.",
+            "maxLength": 50000
+          }
+        },
+        "required": [
+          "viewId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "HomeViewInfo"
+    },
+    {
+      "name": "home.removeView",
+      "summary": "Delete a custom Home view.",
+      "permission": "home",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "description": "Custom view id."
+          }
+        },
+        "required": [
+          "viewId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "home.setDefault",
+      "summary": "Make a view (template id or custom view id) the default for new Home tabs.",
+      "permission": "home",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "description": "View id."
+          }
+        },
+        "required": [
+          "viewId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "home.open",
+      "summary": "Open a Home view (template id or custom view id) in a Home tab.",
+      "permission": "navigation",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "description": "View id."
+          }
+        },
+        "required": [
+          "viewId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "home.setBackground",
+      "summary": "Set a Home view's background: a preset, a color, a gradient or an animated wallpaper.",
+      "permission": "home",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "description": "View id (template or custom)."
+          },
+          "background": {
+            "type": "string",
+            "description": "Preset id (see home.listViews → backgrounds), \"custom-color\" or \"custom-gradient\"."
+          },
+          "color": {
+            "type": "string",
+            "description": "#rrggbb for custom-color."
+          },
+          "gradient": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "#rrggbb"
+              },
+              "to": {
+                "type": "string",
+                "description": "#rrggbb"
+              },
+              "angle": {
+                "type": "integer",
+                "description": "Degrees.",
+                "minimum": 0,
+                "maximum": 360
+              },
+              "kind": {
+                "type": "string",
+                "description": "Kind.",
+                "enum": [
+                  "linear",
+                  "radial"
+                ]
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "viewId",
+          "background"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "home.addWidget",
+      "summary": "Add a widget to a custom Home view; type \"html\" is a fully custom widget (HTML/CSS/JS).",
+      "details": "Without x/y the widget goes into the first free spot. HTML widgets get `noteral.props` = { data, widgetId, viewId } and can persist with `noteral.setData(next)`.",
+      "permission": "home",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "description": "Custom view id."
+          },
+          "type": {
+            "type": "string",
+            "description": "Widget type (see home.widgetTypes).",
+            "maxLength": 40
+          },
+          "x": {
+            "type": "integer",
+            "description": "Column (0-23).",
+            "minimum": 0,
+            "maximum": 23
+          },
+          "y": {
+            "type": "integer",
+            "description": "Row (10px rows).",
+            "minimum": 0,
+            "maximum": 2000
+          },
+          "w": {
+            "type": "integer",
+            "description": "Width in columns (1-24).",
+            "minimum": 1,
+            "maximum": 24
+          },
+          "h": {
+            "type": "integer",
+            "description": "Height in rows (1 row = 10px).",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "title": {
+            "type": "string",
+            "description": "Card title.",
+            "maxLength": 120
+          },
+          "hideTitle": {
+            "type": "boolean",
+            "description": "Hide the title."
+          },
+          "style": {
+            "type": "string",
+            "description": "Card style.",
+            "enum": [
+              "default",
+              "glass",
+              "solid",
+              "outline",
+              "flat"
+            ]
+          },
+          "tint": {
+            "type": "string",
+            "description": "Accent color (#rrggbb).",
+            "maxLength": 20
+          },
+          "variant": {
+            "type": "string",
+            "description": "Widget-specific variant (e.g. clock: digital|analog|minimal).",
+            "maxLength": 40
+          },
+          "text": {
+            "type": "string",
+            "description": "Text / Markdown for note, text and prompt widgets.",
+            "maxLength": 20000
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Items to show.",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page/folder/database the widget points at."
+          },
+          "pageIds": {
+            "type": "array",
+            "description": "Pages for links/gallery widgets.",
+            "items": {
+              "type": "string",
+              "description": "Page id."
+            },
+            "maxItems": 50
+          },
+          "url": {
+            "type": "string",
+            "description": "Image URL or link.",
+            "maxLength": 4000
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date for countdowns.",
+            "maxLength": 40
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "css": {
+            "type": "string",
+            "description": "Extra CSS for this widget's card (`&` = the card).",
+            "maxLength": 20000
+          },
+          "data": {
+            "description": "Free-form data for html widgets (noteral.props.data).",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "required": [
+          "viewId",
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "HomeWidgetInfo",
+      "example": "await app.home.addWidget({ viewId, type: \"html\", title: \"Weather\", w: 8, h: 14, html: \"<div class=n-card>☀️ 21°</div>\" });"
+    },
+    {
+      "name": "home.updateWidget",
+      "summary": "Change a Home widget (position, size, style, content).",
+      "permission": "home",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "description": "Custom view id."
+          },
+          "widgetId": {
+            "type": "string",
+            "description": "Widget id."
+          },
+          "type": {
+            "type": "string",
+            "description": "Widget type (see home.widgetTypes). \"html\" is a fully custom widget.",
+            "maxLength": 40
+          },
+          "x": {
+            "type": "integer",
+            "description": "Column (0-23).",
+            "minimum": 0,
+            "maximum": 23
+          },
+          "y": {
+            "type": "integer",
+            "description": "Row (10px rows).",
+            "minimum": 0,
+            "maximum": 2000
+          },
+          "w": {
+            "type": "integer",
+            "description": "Width in columns (1-24).",
+            "minimum": 1,
+            "maximum": 24
+          },
+          "h": {
+            "type": "integer",
+            "description": "Height in rows (1 row = 10px).",
+            "minimum": 1,
+            "maximum": 200
+          },
+          "title": {
+            "type": "string",
+            "description": "Card title.",
+            "maxLength": 120
+          },
+          "hideTitle": {
+            "type": "boolean",
+            "description": "Hide the title."
+          },
+          "style": {
+            "type": "string",
+            "description": "Card style.",
+            "enum": [
+              "default",
+              "glass",
+              "solid",
+              "outline",
+              "flat"
+            ]
+          },
+          "tint": {
+            "type": "string",
+            "description": "Accent color (#rrggbb).",
+            "maxLength": 20
+          },
+          "variant": {
+            "type": "string",
+            "description": "Widget-specific variant (e.g. clock: digital|analog|minimal).",
+            "maxLength": 40
+          },
+          "text": {
+            "type": "string",
+            "description": "Text / Markdown for note, text and prompt widgets.",
+            "maxLength": 20000
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Items to show.",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page/folder/database the widget points at."
+          },
+          "pageIds": {
+            "type": "array",
+            "description": "Pages for links/gallery widgets.",
+            "items": {
+              "type": "string",
+              "description": "Page id."
+            },
+            "maxItems": 50
+          },
+          "url": {
+            "type": "string",
+            "description": "Image URL or link.",
+            "maxLength": 4000
+          },
+          "date": {
+            "type": "string",
+            "description": "ISO date for countdowns.",
+            "maxLength": 40
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "css": {
+            "type": "string",
+            "description": "Extra CSS for this widget's card (`&` = the card).",
+            "maxLength": 20000
+          },
+          "data": {
+            "description": "Free-form data for html widgets (noteral.props.data).",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "required": [
+          "viewId",
+          "widgetId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "HomeWidgetInfo"
+    },
+    {
+      "name": "home.removeWidget",
+      "summary": "Remove a Home widget.",
+      "permission": "home",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "viewId": {
+            "type": "string",
+            "description": "Custom view id."
+          },
+          "widgetId": {
+            "type": "string",
+            "description": "Widget id."
+          }
+        },
+        "required": [
+          "viewId",
+          "widgetId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "views.post",
+      "summary": "Send a message to the plugin's HTML views (tabs, widgets, blocks, pages); they receive it with noteral.onMessage.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Message name.",
+            "maxLength": 80
+          },
+          "payload": {
+            "description": "JSON payload.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "view": {
+            "type": "string",
+            "description": "Only this view key (from the view:message event)."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "{ delivered: number }"
+    },
+    {
+      "name": "plugins.list",
+      "summary": "List installed plugins.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "PluginInfo[]"
+    },
+    {
+      "name": "plugins.getSource",
+      "summary": "Read an installed plugin's manifest, code and styles.",
+      "permission": null,
+      "tier": "app",
+      "callers": [
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Plugin id."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "PluginSourceInfo"
+    },
+    {
+      "name": "plugins.create",
+      "summary": "Install (or update) a plugin written by the assistant. The user reviews the code and permissions first.",
+      "details": "code is plain JavaScript run in a sandbox. It must call Noteral.register(class extends Noteral.Plugin { async onload() {…} onunload() {…} }). Use this.app.<namespace>.<method>(params) for every App API method (e.g. this.app.sidebar.setTab, this.app.statusBar.setWidget, this.app.blocks.registerType, this.app.nodes.registerType, this.app.home.addWidget), this.addCommand({ id, title, run }), this.setStatus(itemId, text), this.setPanel(panelId, { title, markdown, actions }), this.onPanelAction(panelId, fn), this.onViewMessage(fn), this.registerEvent(eventName, fn), this.addStyles(css), this.loadData() / this.saveData(patch). The plugin is test-run first (see plugins.test) and, after installing, its start-up is checked: the result's `health` reports errors so you can fix and reinstall.",
+      "permission": null,
+      "tier": "app",
+      "callers": [
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "manifest": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Reverse-DNS id, e.g. com.assistant.word-goal.",
+                "maxLength": 80
+              },
+              "name": {
+                "type": "string",
+                "description": "Name.",
+                "maxLength": 80
+              },
+              "version": {
+                "type": "string",
+                "description": "Semver, e.g. 1.0.0."
+              },
+              "description": {
+                "type": "string",
+                "description": "What it does.",
+                "maxLength": 500
+              },
+              "permissions": {
+                "type": "array",
+                "description": "Permissions the code needs.",
+                "items": {
+                  "type": "string",
+                  "description": "Permission id."
+                },
+                "maxItems": 30
+              },
+              "commands": {
+                "type": "array",
+                "description": "Commands it adds.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Command id (lowercase, dashes)."
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "Title."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 30
+              },
+              "statusItems": {
+                "type": "array",
+                "description": "Status bar items.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Item id."
+                    },
+                    "label": {
+                      "type": "string",
+                      "description": "Label."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 10
+              },
+              "panels": {
+                "type": "array",
+                "description": "Sidebar panels.",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Panel id."
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "Title."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 5
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "version",
+              "description"
+            ],
+            "additionalProperties": false
+          },
+          "code": {
+            "type": "string",
+            "description": "Plugin JavaScript.",
+            "maxLength": 500000,
+            "minLength": 1
+          },
+          "styles": {
+            "type": "string",
+            "description": "Optional CSS (needs ui.styles).",
+            "maxLength": 100000
+          },
+          "skipTest": {
+            "type": "boolean",
+            "description": "Install even if the test run reports errors.",
+            "default": false
+          }
+        },
+        "required": [
+          "manifest",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "PluginInstallResult"
+    },
+    {
+      "name": "plugins.test",
+      "summary": "Run plugin code in a throw-away sandbox without installing it, and report errors, logs, commands and UI it registered.",
+      "details": "Write calls (except UI registration) are skipped during the test. Always test before plugins.create and fix every reported error.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "manifest": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Plugin id."
+              },
+              "name": {
+                "type": "string",
+                "description": "Name."
+              },
+              "version": {
+                "type": "string",
+                "description": "Version."
+              },
+              "permissions": {
+                "type": "array",
+                "description": "Permissions.",
+                "items": {
+                  "type": "string",
+                  "description": "Permission id."
+                },
+                "maxItems": 40
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "code": {
+            "type": "string",
+            "description": "Plugin JavaScript.",
+            "maxLength": 500000,
+            "minLength": 1
+          },
+          "styles": {
+            "type": "string",
+            "description": "CSS.",
+            "maxLength": 100000
+          },
+          "waitMs": {
+            "type": "integer",
+            "description": "How long to watch it (ms).",
+            "minimum": 300,
+            "maximum": 8000,
+            "default": 1500
+          }
+        },
+        "required": [
+          "manifest",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "PluginTestResult"
+    },
+    {
+      "name": "plugins.logs",
+      "summary": "Read an installed plugin's recent errors, warnings and console output.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Plugin id."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Entries.",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "LogEntryInfo[]"
+    },
+    {
+      "name": "plugins.uninstall",
+      "summary": "Uninstall a plugin.",
+      "permission": null,
+      "tier": "app",
+      "callers": [
+        "assistant"
+      ],
+      "confirm": true,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Plugin id."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "plugins.setEnabled",
+      "summary": "Enable or disable an installed plugin.",
+      "permission": null,
+      "tier": "app",
+      "callers": [
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Plugin id."
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enabled."
+          }
+        },
+        "required": [
+          "id",
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    }
+  ]
+}
