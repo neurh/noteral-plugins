@@ -21,6 +21,7 @@ Rules for agents writing plugins:
 
 ## Methods (plugin-callable)
 
+- app.state({}) → AppState — What the window shows now: the open page, panes and their tabs, sidebars and their tabs, whether the assistant is open, the open overlay, theme, window size and history.
 - app.info({}) → AppInfo — Get the app version, SDK version, theme and the open workspace.
 - editor.getActive({}) → ActivePage | null [editor.read] — Get the page open in the focused pane, or null when Home or nothing is open.
 - editor.getMarkdown({pageId?, blockIds?}) → string [editor.read] — Read the open page (or some of its blocks) as Markdown.
@@ -38,6 +39,7 @@ Rules for agents writing plugins:
 - editor.scrollToBlock({blockId, pageId?}) → void [editor.read] — Scroll the open page to a block.
 - editor.openFind({replace?}) → void [editor.read] — Open the find bar (or find & replace) in the open page.
 - pages.list({parentId?, kind?, query?, limit?, includeRows?}) → PageInfo[] [pages.read] — List pages, folders and databases in the open workspace.
+- pages.stats({pageId?}) → PageStats [pages.read] — Content facts about a page: words, characters, blocks by type, headings, to-dos, links, page links, embedded databases, images, tables, code blocks, reading time, child pages (defaults to the open page).
 - pages.get({pageId}) → PageInfo [pages.read] — Get one page's metadata.
 - pages.read({pageId, format?}) → PageContent [pages.read] — Read any page's content as Markdown or plain text.
 - pages.path({pageId}) → PageInfo[] [pages.read] — Get the breadcrumb path (ancestors, top first) of a page.
@@ -47,10 +49,13 @@ Rules for agents writing plugins:
 - pages.trash({}) → PageInfo[] [pages.read] — List trashed pages.
 - pages.create({title?, parentId?, kind?, markdown?, icon?, open?}) → PageInfo [pages.write] — Create a page or folder, optionally with Markdown content.
 - pages.write({pageId, markdown}) → void [pages.write] — Replace a page's whole content with Markdown.
+- pages.edit({pageId?, edits}) → { replaced: number; blocksChanged?: number } [pages.write] — Change part of a page by find-and-replace, without resending the whole page.
 - pages.append({pageId, markdown}) → void [pages.write] — Append Markdown to the end of a page.
 - pages.rename({pageId, title}) → void [pages.write] — Rename a page.
 - pages.setIcon({pageId, icon}) → void [pages.write] — Set a page's icon (an emoji, or "" to clear).
 - pages.setCover({pageId, cover}) → void [pages.write] — Set a page's cover: a CSS color/gradient, an image URL, or "" to clear.
+- pages.getBackground({pageId?}) → PageBackgroundInfo | null [pages.read] — Read the page's background (the layer behind the whole page, not the cover), or null.
+- pages.setBackground({pageId?, background}) → PageBackgroundInfo | null [pages.write] — Set the background behind a whole page: a color, gradient, image or animated ASCII scene (null clears).
 - pages.move({pageId, parentId, beforeId?}) → void [pages.write] — Move a page under another parent, optionally before a sibling.
 - pages.duplicate({pageId, open?}) → void [pages.write] — Duplicate a page with its sub-pages.
 - pages.moveToTrash({pageId}) → void [pages.write] — Move a page (and its sub-pages) to the trash.
@@ -59,22 +64,29 @@ Rules for agents writing plugins:
 - databases.list({}) → DatabaseInfo[] [databases.read] — List databases with their row counts.
 - databases.getSchema({databaseId}) → DatabaseSchemaInfo [databases.read] — Get a database's properties (columns) and views.
 - databases.queryRows({databaseId, where?, limit?}) → DatabaseRowInfo[] [databases.read] — Read a database's rows with values keyed by property name.
-- databases.create({title, parentId?, properties?, view?, open?}) → { databaseId: string } [databases.write] — Create a database with properties.
-- databases.addProperty({databaseId, name, type, options?}) → { propertyId: string } [databases.write] — Add a property (column) to a database.
+- databases.create({title, parentId?, properties?, view?, open?}) → { databaseId: string } [databases.write] — Create a database (a page in the tree) with properties and a first view.
+- databases.embed({pageId?, databaseId?, title?, properties?, view?, position?, blockId?, anchor?}) → { databaseId: string; pageId: string; created: boolean } [databases.write] — Put a database inside a page's content: a new inline database, or a linked view of an existing one.
+- databases.addProperty({databaseId, name, type, options?, formula?, format?, dateFormat?, display?}) → { propertyId: string } [databases.write] — Add a property (column) to a database.
 - databases.addRow({databaseId, title?, values?}) → { rowId: string } [databases.write] — Add a row; values are keyed by property name.
+- databases.addRows({databaseId, rows}) → { rowIds: string[]; count: number } [databases.write] — Add many rows in one call (up to 500). Prefer this over repeated addRow.
+- databases.updateRows({updates}) → { count: number } [databases.write] — Change many rows in one call (up to 500).
 - databases.updateRow({rowId, title?, values?}) → void [databases.write] — Change a row's title and/or values (keyed by property name).
 - databases.getView({databaseId, viewId?}) → DatabaseViewInfo [databases.read] — Get one view with its filters, sorts, grouping, visible properties and calculations.
-- databases.queryView({databaseId, viewId?, search?, filters?, filterMode?, sorts?, limit?}) → DatabaseRowInfo[] [databases.read] — Read rows the way a view shows them (its filters and sorts applied), optionally with a search.
-- databases.addView({databaseId, name?, type?, filters?, filterMode?, sorts?, groupBy?, hiddenGroups?, show?, hide?, order?, widths?, calcs?, dateProperty?, cardPreview?, wrap?}) → DatabaseViewInfo [databases.write] — Add a view (table, board, gallery, list or calendar) with optional filters, sorts and grouping.
-- databases.updateView({databaseId, viewId, name?, type?, filters?, filterMode?, sorts?, groupBy?, hiddenGroups?, show?, hide?, order?, widths?, calcs?, dateProperty?, cardPreview?, wrap?}) → DatabaseViewInfo [databases.write] — Change a view: name, layout, filters, sorts, grouping, visible properties, order, widths, calculations.
+- databases.queryView({databaseId, viewId?, search?, filters?, filterMode?, advanced?, sorts?, limit?}) → DatabaseRowInfo[] [databases.read] — Read rows the way a view shows them (its filters and sorts applied), optionally with a search.
+- databases.addView({databaseId, name?, icon?, type?, filters?, filterMode?, advanced?, sorts?, groupBy?, hiddenGroups?, collapsedGroups?, hideEmptyGroups?, colorColumns?, show?, hide?, order?, widths?, calcs?, dateProperty?, cardPreview?, cardSize?, wrap?, rowNumbers?, showFilterBar?, showIcons?, limit?, openIn?, chart?, custom?}) → DatabaseViewInfo [databases.write] — Add a view (table, board, gallery, list, calendar, chart or custom) with optional filters, sorts, grouping and settings.
+- databases.updateView({databaseId, viewId, name?, icon?, type?, filters?, filterMode?, advanced?, sorts?, groupBy?, hiddenGroups?, collapsedGroups?, hideEmptyGroups?, colorColumns?, show?, hide?, order?, widths?, calcs?, dateProperty?, cardPreview?, cardSize?, wrap?, rowNumbers?, showFilterBar?, showIcons?, limit?, openIn?, chart?, custom?}) → DatabaseViewInfo [databases.write] — Change a view: layout, filters (simple and advanced), sorts, grouping, visible properties, calculations, chart or custom settings, where rows open.
 - databases.removeView({databaseId, viewId}) → void [databases.write] — Remove a view (a database keeps at least one).
 - databases.duplicateView({databaseId, viewId, name?}) → DatabaseViewInfo [databases.write] — Copy a view with all its settings.
 - databases.moveView({databaseId, viewId, index}) → void [databases.write] — Move a view to another position in the view tabs.
-- databases.updateProperty({databaseId, property, name?, type?, format?, options?}) → DatabaseSchemaInfo [databases.write] — Rename a property, change its type, number format or select options.
+- databases.updateProperty({databaseId, property, name?, type?, formula?, format?, dateFormat?, display?, options?}) → DatabaseSchemaInfo [databases.write] — Rename a property, change its type, formula, number/date format or select options.
+- databases.formulaFunctions({}) → string [databases.read] — The formula language: syntax and every function (math, text, style/link formatting, dates, lists, lambdas), one line each.
+- databases.checkFormula({databaseId, formula, property?}) → { ok: boolean; error?: string; resultType?: string; sample?: { title: string; value: unknown; error?: string }[] } [databases.read] — Check a formula against a database without saving: errors (with line/column and did-you-mean hints), result type and sample results.
 - databases.removeProperty({databaseId, property}) → void [databases.write] — Delete a property and its values from every row.
 - databases.deleteRows({rowIds}) → { deleted: number } [databases.write] — Move rows to the trash.
+- databases.setLocked({databaseId, locked}) → { locked: boolean } [databases.write] — Lock or unlock a database. A locked database keeps its structure: no new properties, formula or type changes, and no column moves or resizes (for the user, plugins and the assistant). Rows, cells and views still change freely.
 - databases.rename({databaseId, title?, titleColumn?}) → void [databases.write] — Rename a database or its title column.
 - workspaces.list({}) → WorkspaceInfo[] [workspaces.read] — List workspaces.
+- workspaces.stats({content?, limit?}) → WorkspaceStats [pages.read] — Counts for the open workspace: pages, databases, rows, folders, favorites, trash, nesting depth, last edited page; with content: true also total words, characters, to-dos and the longest pages.
 - workspaces.current({}) → WorkspaceInfo | null [workspaces.read] — Get the open workspace.
 - workspaces.open({workspaceId}) → void [workspaces.write] — Switch to another workspace.
 - workspaces.create({name}) → void [workspaces.write] — Create a workspace and switch to it.
@@ -96,6 +108,10 @@ Rules for agents writing plugins:
 - assets.pickFile({}) → string | null [assets.write] — Ask the user to pick a file; returns its URL.
 - settings.get({}) → Record<string, unknown> [settings.read] — Read the plugin's saved settings.
 - settings.set({patch}) → Record<string, unknown> [settings.write] — Merge a patch into the plugin's saved settings.
+- settings.options({}) → Record<string, unknown> [settings.read] — The plugin's user options: saved values merged over the defaults of its declared fields.
+- settings.define({fields}) → SettingFieldInfo[] [settings.read] — Declare (replace) the fields of the plugin's Options screen at runtime.
+- settings.openOptions({}) → void — Open the plugin's Configure dialog (its option fields and its custom options page).
+- settings.setPage({html?, title?, width?, height?, showFields?, open?}) → void — Give the plugin's Configure dialog a custom HTML options page (null removes it).
 - preferences.get({}) → Preferences [preferences] — Read app preferences (theme, fonts, page width, autosave, …).
 - preferences.update({theme?, editorFont?, fontSize?, lineHeight?, pageWidth?, fullWidth?, autosaveDelay?, spellcheck?, reduceMotion?, showStats?}) → Preferences [preferences] — Change app preferences.
 - appearance.get({}) → Customizations [appearance] — Get the current customizations (tokens, CSS snippets, component styles).
@@ -117,6 +133,10 @@ Rules for agents writing plugins:
 - ui.prompt({title, message?, placeholder?, value?, multiline?}) → string | null [ui.modal] — Ask the user to type a value. Resolves to null when cancelled.
 - ui.pick({title, items}) → string | null [ui.modal] — Ask the user to pick one item from a list. Resolves to the id or null.
 - ui.ask({question, options?, multiple?, allowText?, placeholder?}) → AskResult [ui.modal] — Ask the user a question with choices and/or a free-text answer, and wait for the reply.
+- ui.menu({items, x?, y?, anchor?, placement?, width?, filter?}) → string | null [ui.modal] — Open a menu (context menu or dropdown) and wait for the choice. Resolves to the chosen item id, or null when dismissed.
+- ui.showModal({html, title?, subtitle?, data?, width?, height?, dismissible?, bare?}) → unknown [ui.modal] — Open a modal dialog that renders your HTML, and wait until it closes. Resolves to the value passed to noteral.close(value) (or noteral.setData), or null when dismissed.
+- ui.popover({html, data?, x?, y?, anchor?, placement?, width?, height?}) → unknown [ui.modal] — Open a small floating panel with your HTML next to an element or point; it closes on outside click or Escape. Resolves to the value passed to noteral.close(value), or null.
+- ui.closePopups({}) → void [ui.modal] — Close every modal and popover you opened.
 - ui.setStatus({itemId, text, title?}) → void [ui.status] — Show text in the status bar (declare the item in manifest.contributes.statusItems or by id).
 - ui.setPanel({panelId, title?, markdown, actions?}) → void [ui.panel] — Render a sidebar panel from Markdown, with optional action buttons.
 - ui.addStyles({css}) → void [ui.styles] — Add CSS for the plugin's own look (replaces the plugin's previous styles).
@@ -134,12 +154,18 @@ Rules for agents writing plugins:
 - statusBar.list({}) → StatusWidgetInfo[] — List status bar widgets (built-in and custom).
 - statusBar.setWidget({id, text?, tooltip?, icon?, html?, width?, side?, order?, command?, layer?}) → StatusWidgetInfo [ui.status] — Add or update a status bar widget: text with an icon and click command, or a small HTML view.
 - statusBar.removeWidget({id, layer?}) → void [ui.status] — Remove a status bar widget.
+- statusBar.getLayout({}) → StatusBarLayoutInfo — The status bar layout in effect (separators, gap, height, per-item hidden/side/order/width) and every item with where it shows now.
+- statusBar.configure({separator?, gap?, height?, padding?, fontSize?, hidden?, items?, reset?, layer?}) → StatusBarLayoutInfo [ui.status] — Customize the whole status bar: hide/move/reorder/resize any item (built-in or custom), separators between items, gap, height, padding, text size, or hide the bar.
+- statusBar.setItem({key, hidden?, side?, order?, width?, align?, layer?}) → StatusBarLayoutInfo [ui.status] — Show, hide, move, reorder or resize one status bar item (built-in or custom).
+- menus.list({menu?}) → MenuItemInfo[] — List custom items in app menus (optionally one menu).
+- menus.addItem({id, menu, title, icon?, command, kinds?, nodeTypes?, blockTypes?, danger?, layer?}) → MenuItemInfo [menus] — Add or update an item in an app menu: the page "…" menu, tree item menu, block menu, sidebar tab menu or status bar menu.
+- menus.removeItem({id, layer?}) → void [menus] — Remove a custom menu item.
 - blocks.registerType({type, title, description?, icon?, keywords?, html, defaultData?, height?, layer?}) → BlockTypeInfo [blocks] — Register a custom editor block type rendered by an HTML view; it appears in the slash menu.
 - blocks.unregisterType({type, layer?}) → void [blocks] — Remove a custom block type (existing blocks show a placeholder).
 - blocks.listTypes({}) → BlockTypeInfo[] — List custom block types.
 - blocks.insert({type, data?, after?}) → { blockId: string } [editor.write] — Insert a custom block into the open page.
 - blocks.setData({blockId, data}) → void [editor.write] — Replace the data of a custom block in the open page.
-- nodes.registerType({type, title, description?, icon?, html, defaultData?, layer?}) → NodeTypeInfo [nodes] — Register a custom page type for the page tree, opened in a full-page HTML view.
+- nodes.registerType({type, title, description?, icon?, html, defaultData?, layout?, layer?}) → NodeTypeInfo [nodes] — Register a custom page type for the page tree, opened in a full-page HTML view.
 - nodes.unregisterType({type, layer?}) → void [nodes] — Remove a custom page type (existing items show a placeholder).
 - nodes.listTypes({}) → NodeTypeInfo[] — List custom page types.
 - nodes.create({type, title?, parentId?, data?, open?}) → { pageId: string } [pages.write] — Create an item of a custom page type in the tree.
@@ -167,6 +193,7 @@ Rules for agents writing plugins:
 - workspace:opened: WorkspaceInfo — A workspace was opened.
 - pages:changed: { count: number } — Pages were created, renamed, moved or trashed.
 - panel:action: { panelId: string; actionId: string } — A button in one of the plugin's panels or Markdown tabs was pressed.
+- settings:changed: { options: Record<string, unknown>; changed: string[] } — The user changed the plugin's options.
 - view:message: { view: string; name: string; payload: unknown } — One of the plugin's HTML views called noteral.post(name, payload).
 
 ## Permissions
@@ -199,3 +226,4 @@ Rules for agents writing plugins:
 - blocks (low): Add new kinds of blocks to the editor (rendered in a sandbox).
 - nodes (low): Add new kinds of items to the page tree (rendered in a sandbox).
 - home (medium): Create, change and remove Home views and widgets.
+- menus (low): Add items to page, tree, block, tab and status bar menus.

@@ -79,7 +79,7 @@ export const app: NoteralApp = makeApp();
 // ── events and commands ─────────────────────────────────────────────────────
 
 const eventHandlers = new Map<string, Set<(data: unknown) => void>>();
-const commandHandlers = new Map<string, () => unknown>();
+const commandHandlers = new Map<string, (context?: MenuContext) => unknown>();
 
 function onEvent(event: string, handler: (data: unknown) => void): Disposer {
   let set = eventHandlers.get(event);
@@ -111,7 +111,60 @@ export interface CommandDefinition {
   description?: string;
   /** Extra words the command palette matches on. */
   keywords?: string;
-  run: () => unknown | Promise<unknown>;
+  /** Runs from the palette (no argument) or from a menu item (what the menu was opened on). */
+  run: (context?: MenuContext) => unknown | Promise<unknown>;
+}
+
+/** App menus a plugin can add items to. */
+export type MenuSlot = "page" | "tree" | "block" | "tab" | "status";
+
+/** What a menu was opened on; passed to the command a menu item runs. */
+export interface MenuContext {
+  menu: MenuSlot;
+  /** Page, folder, database or custom item (page and tree menus; the page of a block). */
+  pageId?: string;
+  kind?: "page" | "folder" | "database" | "custom";
+  /** Custom page type, when kind is "custom". */
+  nodeType?: string;
+  /** Block menu: the block and its type. */
+  blockId?: string;
+  blockType?: string;
+  /** Tab menu: the sidebar tab key. */
+  tabKey?: string;
+}
+
+export interface MenuItemDefinition {
+  /** Local id, unique within the plugin. */
+  id: string;
+  menu: MenuSlot;
+  title: string;
+  /** Emoji or Lucide icon name (e.g. "lucide:star"). */
+  icon?: string;
+  /** Only for these item kinds (page and tree menus). */
+  kinds?: ("page" | "folder" | "database" | "custom")[];
+  /** Only for these custom page types. */
+  nodeTypes?: string[];
+  /** Only for these block types (block menu). */
+  blockTypes?: string[];
+  /** Shown in red, for destructive actions. */
+  danger?: boolean;
+  run: (context: MenuContext) => unknown | Promise<unknown>;
+}
+
+/** One field on the plugin's Options screen (Plugins → Installed → Options). */
+export interface SettingField {
+  key: string;
+  type: "toggle" | "text" | "textarea" | "number" | "slider" | "select" | "color";
+  label: string;
+  description?: string;
+  default?: unknown;
+  options?: { value: string; label: string }[];
+  min?: number;
+  max?: number;
+  step?: number;
+  placeholder?: string;
+  /** Heading the field is grouped under. */
+  section?: string;
 }
 
 export interface PanelContent {
@@ -167,6 +220,49 @@ export class Plugin {
     this.register(() => {
       commandHandlers.delete(command.id);
       if (!declared) void call("commands.unregister", { id: command.id }).catch(() => undefined);
+    });
+  }
+
+  /**
+   * Adds an item to one of the app's menus (page "…" menu, tree item menu, block menu, sidebar
+   * tab menu, status bar menu). `run` gets what the menu was opened on. Removed on unload.
+   * Items can also be declared in manifest.json under contributes.menus with a `command`.
+   */
+  addMenuItem(item: MenuItemDefinition): Disposer {
+    const command = `menu.${item.id}`;
+    commandHandlers.set(command, (context) => item.run(context ?? { menu: item.menu }));
+    const { run: _run, ...rest } = item;
+    void call("menus.addItem", { ...rest, command }).catch(reportError);
+    const dispose = () => {
+      commandHandlers.delete(command);
+      void call("menus.removeItem", { id: item.id }).catch(() => undefined);
+    };
+    this.register(dispose);
+    return dispose;
+  }
+
+  /**
+   * The user's options merged over defaults (from manifest contributes.settings or
+   * `defineSettings`). Needs `settings.read`.
+   */
+  async getOptions<T extends Record<string, unknown> = Record<string, unknown>>(): Promise<T> {
+    return (await call("settings.options", {})) as T;
+  }
+
+  /**
+   * Declares the plugin's Options screen at runtime (instead of, or on top of, manifest.json).
+   * The user edits them under Plugins → Installed → Options.
+   */
+  defineSettings(fields: SettingField[]): Promise<void> {
+    return call("settings.define", { fields });
+  }
+
+  /** Runs `handler(options, changedKeys)` whenever the user changes the plugin's options. */
+  onOptionsChange(handler: (options: Record<string, unknown>, changed: string[]) => unknown): Disposer {
+    return this.registerEvent("settings:changed", (data) => {
+      Promise.resolve()
+        .then(() => handler(data.options, data.changed))
+        .catch(reportError);
     });
   }
 
@@ -378,11 +474,11 @@ async function shutdown() {
   pending.clear();
 }
 
-async function runCommand(commandId: string, requestId: string) {
+async function runCommand(commandId: string, requestId: string, context: MenuContext | undefined) {
   const handler = commandHandlers.get(commandId);
   try {
     if (!handler) throw new Error(`No handler for command "${commandId}".`);
-    await handler();
+    await handler(context);
     post({ type: "commandResult", requestId, ok: true });
   } catch (error) {
     post({ type: "commandResult", requestId, ok: false, error: error instanceof Error ? error.message : String(error) });
@@ -400,7 +496,7 @@ function onMessage(event: MessageEvent) {
       void start();
       return;
     case "command":
-      void runCommand(String(data.commandId), String(data.requestId));
+      void runCommand(String(data.commandId), String(data.requestId), (data.context as MenuContext | null) ?? undefined);
       return;
     case "event": {
       const handlers = eventHandlers.get(String(data.event));

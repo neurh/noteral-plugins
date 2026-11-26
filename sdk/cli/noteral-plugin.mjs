@@ -51,6 +51,7 @@ export const PERMISSIONS = [
   { id: "blocks", title: "Custom blocks", risk: "low" },
   { id: "nodes", title: "Custom page types", risk: "low" },
   { id: "home", title: "Home", risk: "medium" },
+  { id: "menus", title: "Menu items", risk: "low" },
 ];
 // @generated permissions end
 

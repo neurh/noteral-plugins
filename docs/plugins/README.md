@@ -5,6 +5,7 @@ Noteral plugins are small JavaScript bundles that run in a sandboxed iframe and 
 - **[Manifest](manifest.md)**: every `manifest.json` field
 - **[Extending the interface](ui.md)**: sidebar tabs, status-bar widgets, custom blocks, custom page types, Home, appearance layers, testing
 - **[Publishing](publishing.md)**: `npm run release` and `npm run submit`, using the GitHub CLI, GitHub Releases and the community registry
+- **[Databases](../databases.md)**: views, filters, formulas, charts, custom views and embedding from code
 - **[API reference](../sdk/api-reference.md)**: every method, event, permission and type, generated from the source
 - **[llms.txt](../sdk/llms.txt)** / **[llms-full.txt](../sdk/llms-full.txt)**: the same material for coding agents
 
@@ -91,7 +92,9 @@ Extend `Plugin`, do your setup in `onload()`, and end the file with `register(Yo
 | `onunload()` | Called when the plugin is disabled, updated or uninstalled. Clean up anything you made yourself. | – |
 | `app` | The typed App API: `this.app.<namespace>.<method>(params)`. | per method |
 | `manifest` | Your parsed `manifest.json`. | – |
-| `addCommand({ id, title, description?, keywords?, run })` | Adds a command to the command palette (Ctrl/⌘ K) and the slash menu. `id` is local to your plugin. | – |
+| `addCommand({ id, title, description?, keywords?, run })` | Adds a command to the command palette (Ctrl/⌘ K) and the slash menu. `id` is local to your plugin. `run` gets a `MenuContext` when a menu item triggered it. | – |
+| `addMenuItem({ id, menu, title, icon?, kinds?, nodeTypes?, blockTypes?, danger?, run })` | Adds an item to the page, tree, block, tab or status-bar menu. `run(context)` gets what the menu was opened on. See [Menu items](ui.md#menu-items). | `menus` |
+| `getOptions()` / `defineSettings(fields)` / `onOptionsChange(fn)` | Read the user's values from your **Options** screen, add fields at runtime, react to edits. See [Options](ui.md#options). | `settings.read` |
 | `registerEvent(name, handler)` | Subscribes to an app event (see below). Returns a disposer. | event's permission |
 | `registerInterval(fn, ms)` | `setInterval` that is cleared on unload. | – |
 | `register(disposer)` | Runs a function on unload. | – |
@@ -150,12 +153,13 @@ Some calls (moving pages to the trash, opening another workspace, resetting the 
 | `workspace:opened` | `WorkspaceInfo` | – |
 | `pages:changed` | `{ count }` | `pages.read` |
 | `panel:action` | `{ panelId, actionId }` | `ui.panel` |
+| `settings:changed` | `{ options, changed }` (the user edited your Options) | `settings.read` |
 
 ## Permissions
 
 Ask for the smallest set that works. The install screen lists each permission with its risk level, and an update that adds permissions asks again. The full vocabulary is in the [API reference](../sdk/api-reference.md#permissions); the common ones:
 
-- **Low**: `editor.read`, `navigation`, `layout`, `ui.status`, `ui.notify`, `ui.panel`, `ui.modal`, `settings.read`, `settings.write`, `assets.read`, `assets.write`, `workspaces.read`
+- **Low**: `editor.read`, `navigation`, `layout`, `menus`, `ui.status`, `ui.notify`, `ui.panel`, `ui.modal`, `settings.read`, `settings.write`, `assets.read`, `assets.write`, `workspaces.read`
 - **Medium**: `editor.write`, `pages.read`, `databases.read`, `search.read`, `ui.styles`, `appearance`, `preferences`, `clipboard`
 - **High**: `pages.write`, `databases.write`, `workspaces.write`, `commands.execute`, `network` (any HTTP request through the app, which can send data off the device)
 

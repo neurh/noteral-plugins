@@ -48,8 +48,22 @@ Older plugins may ship `plugin.json` instead of `manifest.json`. It is still rea
 | `commands` | `id` (`^[a-z][a-z0-9-]{1,48}$`), `title`, `description?`, `keywords?` (a space-separated string) | Appear in the command palette and slash menu before the plugin loads. Handle them with `this.addCommand({ id, ... , run })` (same id). |
 | `statusItems` | `id`, `label`, `description?` | Space in the status bar, filled with `this.setStatus(id, text)`. |
 | `panels` | `id`, `title`, `description?` | A right-sidebar panel, filled with `this.setPanel(id, { markdown, actions })`. |
+| `menus` | `id`, `menu` (`page` · `tree` · `block` · `tab` · `status`), `title`, `command`, `icon?`, `kinds?`, `nodeTypes?`, `blockTypes?`, `danger?` | An item in an app menu. Choosing it runs the plugin's `command` and passes it a `MenuContext` (see [ui.md](ui.md#menu-items)). Needs `menus`. |
+| `settings` | `key`, `type` (`toggle` · `text` · `textarea` · `number` · `slider` · `select` · `color`), `label`, `description?`, `section?`, `placeholder?`, `default?`, `options?` (select), `min?` / `max?` / `step?` | Fields on the plugin's **Options** screen. Read them with `this.getOptions()`. |
 
 Commands added only through `addCommand` don't need a manifest entry. Declaring them is still nice, because users see them before they install.
+
+```json
+"contributes": {
+  "commands": [{ "id": "copy-link", "title": "Copy link to page" }],
+  "menus": [{ "id": "copy-link", "menu": "tree", "title": "Copy link", "icon": "lucide:link", "command": "copy-link", "kinds": ["page"] }],
+  "settings": [
+    { "key": "format", "type": "select", "label": "Link format", "default": "markdown",
+      "options": [{ "value": "markdown", "label": "Markdown" }, { "value": "url", "label": "Plain URL" }] },
+    { "key": "notify", "type": "toggle", "label": "Show a toast after copying", "default": true }
+  ]
+}
+```
 
 ## Permissions
 
@@ -71,6 +85,7 @@ Commands added only through `addCommand` don't need a manifest entry. Declaring 
 | `preferences` | Read and change app preferences (font size, width, …) | medium |
 | `appearance` | Change theme tokens, style components, add CSS | medium |
 | `commands.execute` | List and run app and plugin commands | high |
+| `menus` | Add items to the page, tree, block, tab and status-bar menus | low |
 | `clipboard` | Read and write clipboard text | medium |
 | `network` | HTTP requests through the app (no localhost or private ranges) | high |
 | `ui.status`, `ui.notify`, `ui.panel`, `ui.modal` | Status items, toasts, panels, confirm/prompt/pick dialogs | low |

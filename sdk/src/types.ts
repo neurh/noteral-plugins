@@ -53,6 +53,108 @@ export interface EditorSnapshot {
   outline: OutlineItem[];
 }
 
+/** Content facts about a page (pages.stats). Database pages also get `database`. */
+/** A page's background (behind the whole page, not the cover). */
+export interface PageBackgroundInfo {
+  kind: "color" | "gradient" | "image" | "ascii";
+  value?: string;
+  ascii?: { scene: string; speed?: number; ink?: string; density?: "fine" | "normal" | "large"; still?: boolean; cursor?: boolean };
+  opacity?: number;
+  dim?: number;
+}
+
+export interface PageStats {
+  pageId: string;
+  title: string;
+  kind: "page" | "folder" | "database" | "row" | "custom";
+  icon: string;
+  parentId: string;
+  createdAt: string;
+  updatedAt: string;
+  /** 0 for top-level pages. */
+  depth: number;
+  childPages: number;
+  favorite: boolean;
+  /** The page is the one in focus. */
+  active: boolean;
+  /** Counted from the open editor (includes unsaved edits). */
+  open: boolean;
+  words: number;
+  characters: number;
+  charactersNoSpaces: number;
+  blocks: number;
+  paragraphs: number;
+  lines: number;
+  blockTypes: Record<string, number>;
+  headings: { level: number; text: string; blockId: string }[];
+  todos: { total: number; done: number; open: number };
+  links: { url: string; text: string }[];
+  pageLinks: { pageId: string; title: string }[];
+  databases: { id: string; title: string; blockId: string }[];
+  customBlocks: { kind: string; count: number }[];
+  images: number;
+  media: number;
+  files: number;
+  tables: number;
+  codeBlocks: number;
+  quotes: number;
+  readingMinutes: number;
+  speakingMinutes: number;
+  database?: { rows: number; properties: { id: string; name: string; type: string }[]; views: number; viewTypes: string[] };
+}
+
+export interface WorkspaceStats {
+  workspaceId: string | null;
+  workspaceName: string;
+  /** Every live item (pages, databases, rows, folders, custom). */
+  total: number;
+  pages: number;
+  databases: number;
+  rows: number;
+  folders: number;
+  custom: number;
+  topLevel: number;
+  favorites: number;
+  trashed: number;
+  maxDepth: number;
+  lastEdited: { pageId: string; title: string; updatedAt: string } | null;
+  /** With content: true — totals read from every page's text. */
+  content?: {
+    scanned: number;
+    words: number;
+    characters: number;
+    blocks: number;
+    todos: { total: number; done: number; open: number };
+    longest: { pageId: string; title: string; words: number }[];
+    readingMinutes: number;
+  };
+}
+
+/** What the window shows right now (app.state). */
+export interface AppState {
+  activePageId: string;
+  activeTitle: string;
+  focusedPaneId: string;
+  panes: {
+    id: string;
+    focused: boolean;
+    maximized: boolean;
+    activeTab: string;
+    tabs: { id: string; pageId: string; title: string; kind: "home" | "page" | "folder" | "database" | "row" | "custom"; active: boolean }[];
+  }[];
+  openTabs: number;
+  leftSidebar: { open: boolean; tab: string };
+  rightSidebar: { open: boolean; tab: string };
+  assistantOpen: boolean;
+  /** Open overlay ("palette", "settings", …) or "". */
+  overlay: string;
+  theme: "light" | "dark";
+  online: boolean;
+  window: { width: number; height: number };
+  workspaceId: string | null;
+  history: { canGoBack: boolean; canGoForward: boolean };
+}
+
 export interface PageInfo {
   id: string;
   title: string;
@@ -90,42 +192,134 @@ export interface DatabasePropertyInfo {
   name: string;
   type: string;
   options?: { id: string; name: string; color: string }[];
+  /** Number properties (and number formulas): number | commas | percent | dollar | euro | pound | yen. */
+  format?: string;
+  /** Formula properties: the formula source. */
+  formula?: string;
+  /** Formula properties: the type the results have (number, text, checkbox, date). */
+  resultType?: string;
+  /** Date and date-formula display: relative | short | long | iso. */
+  dateFormat?: string;
+  /** Formula properties: why the formula fails, if it does. */
+  error?: string;
+  /** Number properties (and number formulas): how the value is shown, when not as a plain number. */
+  display?: { style: "number" | "bar" | "ring" | "rating" | "heat"; color?: string; max?: number; showNumber?: boolean };
 }
 
 export interface DatabaseSchemaInfo {
   databaseId: string;
   title: string;
   titleName: string;
+  /** Present (true) when the database is locked: row writes are refused. */
+  locked?: boolean;
   properties: DatabasePropertyInfo[];
   views: { id: string; name: string; type: string }[];
+}
+
+/** A filter rule, or a nested and/or group of rules (advanced filters). */
+export type DatabaseFilterNode =
+  | { id: string; property: string; op: string; value?: unknown }
+  | { id: string; mode: "and" | "or"; items: DatabaseFilterNode[] };
+
+/** Chart view settings; property ids are returned as names. */
+export interface DatabaseChartInfo {
+  kind?: "bar" | "column" | "line" | "area" | "pie" | "donut" | "scatter" | "funnel" | "radar" | "heatmap" | "number";
+  x?: string;
+  dateBucket?: "day" | "week" | "month" | "quarter" | "year";
+  aggregate?: "count" | "countValues" | "countUnique" | "sum" | "average" | "median" | "min" | "max";
+  y?: string;
+  series?: string;
+  stacked?: boolean;
+  normalize?: boolean;
+  cumulative?: boolean;
+  sort?: "default" | "label" | "labelDesc" | "value" | "valueDesc";
+  limit?: number;
+  omitEmpty?: boolean;
+  smooth?: boolean;
+  labels?: boolean;
+  legend?: boolean;
+  grid?: boolean;
+  palette?: string;
+  height?: number;
+  goal?: number;
+  yMin?: number;
+  yMax?: number;
+  format?: string;
+  title?: string;
+  zoom?: boolean;
+  zoomSlider?: boolean;
+  xTitle?: string;
+  yTitle?: string;
+  xLabels?: boolean;
+  yLabels?: boolean;
+  labelAngle?: number;
+  logScale?: boolean;
+  labelContent?: "value" | "percent" | "name" | "nameValue" | "namePercent";
+  labelPosition?: "inside" | "outside";
+  colorBy?: "category" | "single";
+  color?: string;
+  curve?: "straight" | "smooth" | "step";
+  points?: boolean;
+  gradient?: boolean;
+  donutWidth?: number;
+  other?: boolean;
+  aggregate2?: "count" | "countValues" | "countUnique" | "sum" | "average" | "median" | "min" | "max";
+  /** Property name. */
+  y2?: string;
+  legendPosition?: "top" | "bottom" | "left" | "right";
+  tooltip?: "group" | "item" | "off";
+  goalLabel?: string;
+  emptyText?: string;
 }
 
 export interface DatabaseViewInfo {
   databaseId: string;
   id: string;
   name: string;
-  type: "table" | "board" | "gallery" | "list" | "calendar";
+  type: "table" | "board" | "gallery" | "list" | "calendar" | "chart" | "custom";
   filters: { id: string; property: string; op: string; value?: unknown }[];
   filterMode: "and" | "or";
+  /** Advanced filter tree, combined (AND) with `filters`. */
+  advanced?: { mode: "and" | "or"; items: DatabaseFilterNode[] };
   sorts: { property: string; direction: "asc" | "desc" }[];
   /** Visible properties, in order (the title column first). */
   visible: string[];
   hidden: string[];
   groupBy?: string;
   hiddenGroups?: string[];
+  collapsedGroups?: string[];
+  hideEmptyGroups?: boolean;
+  colorColumns?: boolean;
   dateProperty?: string;
   cardPreview?: "cover" | "none";
+  cardSize?: "small" | "medium" | "large";
   wrap?: boolean;
   widths?: Record<string, number>;
   calcs?: Record<string, string>;
+  showFilterBar?: boolean;
+  /** Rows shown before "Load more". */
+  limit?: number;
+  showIcons?: boolean;
+  /** Tab icon (emoji or icon value). */
+  icon?: string;
+  /** Set when a database block created this view for itself: the block id. It shows only in that block. */
+  owner?: string;
+  /** Where row pages open: modal (default) | side | tab | current. */
+  openIn?: "modal" | "side" | "tab" | "current";
+  rowNumbers?: boolean;
+  chart?: DatabaseChartInfo;
+  /** Custom views: the HTML/CSS/JS rendered in a sandboxed frame. */
+  custom?: { html: string; height?: number };
 }
 
 export interface DatabaseRowInfo {
   id: string;
   title: string;
-  /** Values keyed by property name; select options are returned by name. */
+  /** Values keyed by property name; select options are returned by name; formulas hold their result. */
   values: Record<string, unknown>;
   updatedAt: string;
+  /** Formula errors for this row, by property name. */
+  errors?: Record<string, string>;
 }
 
 export interface WorkspaceInfo {
@@ -404,14 +598,39 @@ export interface SidebarInfo {
 }
 
 export interface StatusWidgetInfo {
+  /** Use this key with statusBar.setItem / statusBar.configure (built-ins: "builtin:<id>"). */
   key: string;
   id: string;
-  side: "left" | "right";
+  /** Where it shows now (after the layout). */
+  side: "left" | "center" | "right";
   order: number;
   builtin: boolean;
   text?: string;
   kind: "builtin" | "text" | "html";
   owner?: ContributionOwnerInfo;
+  /** Hidden by the layout (built-ins "local", "page" and "clock" start hidden). */
+  hidden?: boolean;
+  width?: number | string;
+}
+
+export interface StatusItemLayoutInfo {
+  hidden?: boolean;
+  side?: "left" | "center" | "right";
+  order?: number;
+  width?: number | string;
+  align?: "start" | "center" | "end";
+}
+
+export interface StatusBarLayoutInfo {
+  hidden?: boolean;
+  separator: "none" | "line" | "dot" | "slash" | "space";
+  gap?: number;
+  height?: number;
+  padding?: number;
+  fontSize?: number;
+  items: Record<string, StatusItemLayoutInfo>;
+  /** Every item with its effective placement. */
+  widgets: StatusWidgetInfo[];
 }
 
 export interface BlockTypeInfo {
@@ -427,7 +646,34 @@ export interface NodeTypeInfo {
   title: string;
   description?: string;
   icon?: string;
+  /** "full": the view is the whole page. "page": a page head above the view. */
+  layout: "full" | "page";
   owner: ContributionOwnerInfo;
+}
+
+export interface MenuItemInfo {
+  key: string;
+  id: string;
+  menu: "page" | "tree" | "block" | "tab" | "status";
+  title: string;
+  icon?: string;
+  command: string;
+  danger?: boolean;
+  owner: ContributionOwnerInfo;
+}
+
+export interface SettingFieldInfo {
+  key: string;
+  type: "toggle" | "text" | "textarea" | "number" | "slider" | "select" | "color";
+  label: string;
+  description?: string;
+  default?: unknown;
+  options?: { value: string; label: string }[];
+  min?: number;
+  max?: number;
+  step?: number;
+  placeholder?: string;
+  section?: string;
 }
 
 export interface HomeViewSummary {
@@ -495,7 +741,7 @@ export interface PluginTestResult {
   error?: string;
   logs: { level: string; message: string }[];
   commands: string[];
-  contributions: { sidebarTabs: string[]; statusWidgets: string[]; blockTypes: string[]; nodeTypes: string[]; panels: string[]; statusItems: string[] };
+  contributions: { sidebarTabs: string[]; statusWidgets: string[]; blockTypes: string[]; nodeTypes: string[]; menuItems: string[]; settings: string[]; panels: string[]; statusItems: string[] };
   /** App API methods the code called. */
   calls: string[];
   /** Write calls that were skipped during the test. */
@@ -505,4 +751,18 @@ export interface PluginTestResult {
 export interface PluginInstallResult extends PluginInfo {
   test?: PluginTestResult;
   health: { status: "ready" | "failed" | "starting" | "stopped"; error?: string; logs: { level: string; message: string }[] };
+}
+
+/** Something with editable text, from source.list (assistant). */
+export interface SourceEntry {
+  /** Pass to source.get / source.edit, e.g. "status:pomodoro", "home:<viewId>/<widgetId>". */
+  target: string;
+  kind: "sidebar" | "status" | "block" | "node" | "css" | "component" | "home" | "homeview" | "plugin";
+  title: string;
+  /** Layer id ("base" = the app's own customizations), plugin id, or "home". */
+  owner: string;
+  /** Text fields and their length in characters. */
+  fields: Record<string, number>;
+  /** False for plugin-owned items: change them with plugins.edit. */
+  editable: boolean;
 }
