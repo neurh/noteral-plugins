@@ -2605,7 +2605,7 @@ export interface AppState {
     focused: boolean;
     maximized: boolean;
     activeTab: string;
-    tabs: { id: string; pageId: string; title: string; kind: "home" | "page" | "folder" | "database" | "row" | "custom"; active: boolean }[];
+    tabs: { id: string; pageId: string; title: string; kind: "home" | "page" | "web" | "folder" | "database" | "row" | "custom"; active: boolean }[];
   }[];
   openTabs: number;
   leftSidebar: { open: boolean; tab: string };
@@ -2797,7 +2797,7 @@ export interface WorkspaceInfo {
 export interface TabInfo {
   id: string;
   title: string;
-  kind: "page" | "home";
+  kind: "page" | "home" | "web";
   paneId: string;
   active: boolean;
 }
