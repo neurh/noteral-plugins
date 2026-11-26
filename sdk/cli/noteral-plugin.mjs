@@ -21,7 +21,7 @@ import { createInterface } from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 // @generated permissions start
-export const SDK_VERSION = "2.0.0";
+export const SDK_VERSION = "2.1.0";
 export const PERMISSIONS = [
   { id: "editor.read", title: "Read the open page", risk: "low" },
   { id: "editor.write", title: "Edit the open page", risk: "medium" },

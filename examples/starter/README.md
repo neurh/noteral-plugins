@@ -1,6 +1,6 @@
 # Noteral starter plugin
 
-A minimal plugin to copy: one dynamic command, one status item, and one sidebar panel with a button. It uses SDK 2.0 (`class … extends Plugin`).
+A minimal plugin to copy: one dynamic command, one status item, and one sidebar panel with a button. It uses SDK 2.x (`class … extends Plugin`).
 
 ```
 manifest.json                  id, version, permissions, contributions

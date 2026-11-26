@@ -16,7 +16,7 @@ Every plugin ships a `manifest.json` next to its entry file. Noteral validates i
   "entry": "main.js",
   "permissions": ["editor.read", "ui.status", "settings.read", "settings.write"],
   "contributes": {
-    "commands": [{ "id": "set-speed", "title": "Reading time: set reading speed", "keywords": "wpm words" }],
+    "commands": [{ "id": "set-speed", "title": "Reading time: set reading speed", "keywords": "wpm words", "shortcut": "Mod+Alt+R" }],
     "statusItems": [{ "id": "reading-time", "label": "Reading time" }],
     "panels": [{ "id": "reading-stats", "title": "Reading stats" }]
   }
@@ -45,7 +45,7 @@ Older plugins may ship `plugin.json` instead of `manifest.json`. It is still rea
 
 | Key | Entry fields | Notes |
 | --- | --- | --- |
-| `commands` | `id` (`^[a-z][a-z0-9-]{1,48}$`), `title`, `description?`, `keywords?` (a space-separated string) | Appear in the command palette and slash menu before the plugin loads. Handle them with `this.addCommand({ id, ... , run })` (same id). |
+| `commands` | `id` (`^[a-z][a-z0-9-]{1,48}$`), `title`, `description?`, `keywords?` (a space-separated string), `shortcut?` (e.g. `"Mod+Alt+R"`, max 40 characters; see [Shortcuts](README.md#shortcuts)) | Appear in the command palette and slash menu before the plugin loads. A shortcut that clashes with the app or another command is skipped with a warning. Handle them with `this.addCommand({ id, ... , run })` (same id). |
 | `statusItems` | `id`, `label`, `description?` | Space in the status bar, filled with `this.setStatus(id, text)`. |
 | `panels` | `id`, `title`, `description?` | A right-sidebar panel, filled with `this.setPanel(id, { markdown, actions })`. |
 | `menus` | `id`, `menu` (`page` · `tree` · `block` · `tab` · `status`), `title`, `command`, `icon?`, `kinds?`, `nodeTypes?`, `blockTypes?`, `danger?` | An item in an app menu. Choosing it runs the plugin's `command` and passes it a `MenuContext` (see [ui.md](ui.md#menu-items)). Needs `menus`. |

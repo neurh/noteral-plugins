@@ -1,6 +1,6 @@
 # Noteral plugin SDK
 
-> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.0.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
+> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.1.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
 
 Rules for agents writing plugins:
 - Extend `Plugin`, put setup in `onload()`, and finish main.js with `register(MyPlugin)`. Use `this.addCommand`, `this.registerEvent`, `this.registerInterval` so cleanup is automatic.
@@ -27,16 +27,22 @@ Rules for agents writing plugins:
 - editor.getMarkdown({pageId?, blockIds?}) → string [editor.read] — Read the open page (or some of its blocks) as Markdown.
 - editor.getBlocks({pageId?}) → BlockSummary[] [editor.read] — List the open page's blocks with ids, types, text and nested children.
 - editor.getSelection({pageId?}) → EditorSelection [editor.read] — Get the selected text, the selected block ids and the block with the cursor.
+- editor.getBlock({blockId, pageId?}) → BlockDetail [editor.read] — Get one block by id: type, text, props, children, parent and neighbours.
 - editor.snapshot({}) → EditorSnapshot | null [editor.read] — Get word count, block count, plain text and outline of the open page.
 - editor.insertMarkdown({markdown, position?, blockId?, pageId?}) → { blockIds: string[] } [editor.write] — Insert Markdown at the cursor, at the start or end, or before/after a block.
 - editor.replaceBlocks({blockIds, markdown, pageId?}) → { blockIds: string[] } [editor.write] — Replace blocks with new content parsed from Markdown.
 - editor.updateBlock({blockId, type?, text?, props?, pageId?}) → void [editor.write] — Change one block's type, text or props (e.g. heading level, checked).
 - editor.removeBlocks({blockIds, pageId?}) → void [editor.write] — Remove blocks from the open page.
+- editor.moveBlocks({blockIds, direction?, targetBlockId?, placement?, pageId?}) → void [editor.write] — Move blocks one step up or down, or before/after another block. Block ids stay the same.
+- editor.insertText({text, pageId?}) → void [editor.write] — Type plain text at the cursor, replacing the selection.
+- editor.formatText({styles?, mode?, link?, blockIds?, pageId?}) → void [editor.write] — Make the selection (or whole blocks) bold, italic, coloured, code or a link.
 - editor.setMarkdown({markdown, pageId?}) → void [editor.write] — Replace the whole open page with Markdown.
 - editor.insertBlocks({blocks}) → void [editor.write] — Insert simple blocks after the cursor (SDK 1 shape).
 - editor.undo({pageId?}) → boolean [editor.write] — Undo the last edit in the open page.
 - editor.redo({pageId?}) → boolean [editor.write] — Redo the last undone edit in the open page.
 - editor.scrollToBlock({blockId, pageId?}) → void [editor.read] — Scroll the open page to a block.
+- editor.select({blockId, endBlockId?, placement?, pageId?}) → void [editor.read] — Put the cursor at the start or end of a block, or select a run of blocks.
+- editor.focus({target?, pageId?}) → void [editor.read] — Focus the open page's text or its title.
 - editor.openFind({replace?}) → void [editor.read] — Open the find bar (or find & replace) in the open page.
 - pages.list({parentId?, kind?, query?, limit?, includeRows?}) → PageInfo[] [pages.read] — List pages, folders and databases in the open workspace.
 - pages.stats({pageId?}) → PageStats [pages.read] — Content facts about a page: words, characters, blocks by type, headings, to-dos, links, page links, embedded databases, images, tables, code blocks, reading time, child pages (defaults to the open page).
@@ -191,6 +197,8 @@ Rules for agents writing plugins:
 - page:opened: ActivePage | null — A different page (or Home) became active.
 - theme:changed: { theme: "light" | "dark" } — Light/dark theme changed.
 - workspace:opened: WorkspaceInfo — A workspace was opened.
+- selection:changed: EditorSelection & { pageId: string } — The cursor or selection moved in the open page (debounced).
+- layout:changed: LayoutInfo — Panes, tabs, sidebars or their tabs changed (debounced).
 - pages:changed: { count: number } — Pages were created, renamed, moved or trashed.
 - panel:action: { panelId: string; actionId: string } — A button in one of the plugin's panels or Markdown tabs was pressed.
 - settings:changed: { options: Record<string, unknown>; changed: string[] } — The user changed the plugin's options.

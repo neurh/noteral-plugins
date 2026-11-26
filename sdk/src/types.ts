@@ -38,6 +38,16 @@ export interface EditorSelection {
   cursorBlockId: string;
 }
 
+/** One block from editor.getBlock: the summary plus where it sits. */
+export interface BlockDetail extends BlockSummary {
+  /** Parent block id ("" at the top level). */
+  parentId: string;
+  /** Previous sibling id ("" when first). */
+  prevId: string;
+  /** Next sibling id ("" when last). */
+  nextId: string;
+}
+
 export interface OutlineItem {
   id: string;
   text: string;

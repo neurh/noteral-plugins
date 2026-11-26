@@ -14,7 +14,7 @@ import type {
   StatusOptions,
 } from "./types";
 
-export const SDK_VERSION = "2.0.0";
+export const SDK_VERSION = "2.1.0";
 
 type Json = Record<string, unknown>;
 type Disposer = () => void;
@@ -111,6 +111,12 @@ export interface CommandDefinition {
   description?: string;
   /** Extra words the command palette matches on. */
   keywords?: string;
+  /**
+   * Key binding, e.g. "Mod+Shift+K" (Mod = Ctrl on Windows/Linux, ⌘ on macOS). Needs Mod or Alt
+   * (or an F key). Shortcuts Noteral or another command already uses are refused. For commands
+   * declared in manifest.json, set `shortcut` there instead.
+   */
+  shortcut?: string;
   /** Runs from the palette (no argument) or from a menu item (what the menu was opened on). */
   run: (context?: MenuContext) => unknown | Promise<unknown>;
 }
@@ -215,6 +221,7 @@ export class Plugin {
         title: command.title,
         description: command.description,
         keywords: command.keywords,
+        shortcut: command.shortcut,
       }).catch(reportError);
     }
     this.register(() => {

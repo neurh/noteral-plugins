@@ -1,5 +1,5 @@
 {
-  "sdkVersion": "2.0.0",
+  "sdkVersion": "2.1.0",
   "generatedFrom": "frontend/src/sdk-host/spec.ts",
   "tiers": {
     "read": "Ask mode and up",
@@ -208,6 +208,18 @@
       "payload": "WorkspaceInfo"
     },
     {
+      "name": "selection:changed",
+      "summary": "The cursor or selection moved in the open page (debounced).",
+      "permission": "editor.read",
+      "payload": "EditorSelection & { pageId: string }"
+    },
+    {
+      "name": "layout:changed",
+      "summary": "Panes, tabs, sidebars or their tabs changed (debounced).",
+      "permission": "layout",
+      "payload": "LayoutInfo"
+    },
+    {
       "name": "pages:changed",
       "summary": "Pages were created, renamed, moved or trashed.",
       "permission": "pages.read",
@@ -362,6 +374,35 @@
         "additionalProperties": false
       },
       "returns": "EditorSelection"
+    },
+    {
+      "name": "editor.getBlock",
+      "summary": "Get one block by id: type, text, props, children, parent and neighbours.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "description": "Block id."
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "blockId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "BlockDetail"
     },
     {
       "name": "editor.snapshot",
@@ -547,6 +588,199 @@
       "returns": "void"
     },
     {
+      "name": "editor.moveBlocks",
+      "summary": "Move blocks one step up or down, or before/after another block. Block ids stay the same.",
+      "details": "Pass `direction`, or `targetBlockId` with `placement`. Moving past the first or last block does nothing. Moves are one undo step.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "blockIds": {
+            "type": "array",
+            "description": "Block ids, from editor.getBlocks.",
+            "items": {
+              "type": "string",
+              "description": "Block id"
+            },
+            "maxItems": 500
+          },
+          "direction": {
+            "type": "string",
+            "description": "One step up or down.",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          "targetBlockId": {
+            "type": "string",
+            "description": "Move next to this block instead."
+          },
+          "placement": {
+            "type": "string",
+            "description": "Side of targetBlockId.",
+            "enum": [
+              "before",
+              "after"
+            ],
+            "default": "after"
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "blockIds"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void",
+      "example": "const { cursorBlockId } = await app.editor.getSelection();\nawait app.editor.moveBlocks({ blockIds: [cursorBlockId], direction: \"up\" });"
+    },
+    {
+      "name": "editor.insertText",
+      "summary": "Type plain text at the cursor, replacing the selection.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Text to insert.",
+            "maxLength": 20000
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "editor.formatText",
+      "summary": "Make the selection (or whole blocks) bold, italic, coloured, code or a link.",
+      "details": "`mode` \"toggle\" (default) flips each style, \"add\" sets it and \"remove\" clears it. Colours are the editor's names: gray, brown, red, orange, yellow, green, blue, purple, pink. Needs a non-empty selection unless `blockIds` is given.",
+      "permission": "editor.write",
+      "tier": "content",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "styles": {
+            "type": "object",
+            "properties": {
+              "bold": {
+                "type": "boolean",
+                "description": "Bold."
+              },
+              "italic": {
+                "type": "boolean",
+                "description": "Italic."
+              },
+              "underline": {
+                "type": "boolean",
+                "description": "Underline."
+              },
+              "strike": {
+                "type": "boolean",
+                "description": "Strikethrough."
+              },
+              "code": {
+                "type": "boolean",
+                "description": "Inline code."
+              },
+              "textColor": {
+                "type": "string",
+                "description": "Text colour name.",
+                "enum": [
+                  "default",
+                  "gray",
+                  "brown",
+                  "red",
+                  "orange",
+                  "yellow",
+                  "green",
+                  "blue",
+                  "purple",
+                  "pink"
+                ]
+              },
+              "backgroundColor": {
+                "type": "string",
+                "description": "Highlight colour name.",
+                "enum": [
+                  "default",
+                  "gray",
+                  "brown",
+                  "red",
+                  "orange",
+                  "yellow",
+                  "green",
+                  "blue",
+                  "purple",
+                  "pink"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "mode": {
+            "type": "string",
+            "description": "How styles apply.",
+            "enum": [
+              "toggle",
+              "add",
+              "remove"
+            ],
+            "default": "toggle"
+          },
+          "link": {
+            "type": "string",
+            "description": "Turn the selection into a link to this URL.",
+            "maxLength": 2000
+          },
+          "blockIds": {
+            "type": "array",
+            "description": "Format these whole blocks instead of the selection.",
+            "items": {
+              "type": "string",
+              "description": "Block id"
+            },
+            "maxItems": 500
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "void",
+      "example": "await app.editor.formatText({ styles: { bold: true, textColor: \"red\" }, mode: \"add\" });"
+    },
+    {
       "name": "editor.setMarkdown",
       "summary": "Replace the whole open page with Markdown.",
       "details": "Undoable with editor.undo. Prefer targeted edits for small changes.",
@@ -708,6 +942,79 @@
         "required": [
           "blockId"
         ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "editor.select",
+      "summary": "Put the cursor at the start or end of a block, or select a run of blocks.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "blockId": {
+            "type": "string",
+            "description": "Block id."
+          },
+          "endBlockId": {
+            "type": "string",
+            "description": "Select from blockId to this block."
+          },
+          "placement": {
+            "type": "string",
+            "description": "Where the cursor goes.",
+            "enum": [
+              "start",
+              "end"
+            ],
+            "default": "end"
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
+        "required": [
+          "blockId"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "editor.focus",
+      "summary": "Focus the open page's text or its title.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "description": "What to focus.",
+            "enum": [
+              "text",
+              "title"
+            ],
+            "default": "text"
+          },
+          "pageId": {
+            "type": "string",
+            "description": "Page id. Defaults to the page open in the focused pane."
+          }
+        },
         "additionalProperties": false
       },
       "returns": "void"

@@ -1,6 +1,6 @@
 # Writing Noteral plugins
 
-Noteral plugins are small JavaScript bundles that run in a sandboxed iframe and talk to the app through a versioned API (**SDK 2.0.0**). A plugin can read and edit pages, query and reshape databases (views, filters, sorts, properties), add commands, sidebar tabs, status-bar widgets, editor blocks, page-tree item types and Home widgets, restyle the app, call the network, and react to events. It can do only what its manifest declares and the user approved.
+Noteral plugins are small JavaScript bundles that run in a sandboxed iframe and talk to the app through a versioned API (**SDK 2.1.0**). A plugin can read and edit pages (blocks, text, formatting, the cursor and selection), query and reshape databases (views, filters, sorts, properties), add commands with keyboard shortcuts, sidebar tabs, status-bar widgets, editor blocks, page-tree item types and Home widgets, restyle the app, call the network, and react to events. It can do only what its manifest declares and the user approved.
 
 - **[Manifest](manifest.md)**: every `manifest.json` field
 - **[Extending the interface](ui.md)**: sidebar tabs, status-bar widgets, custom blocks, custom page types, Home, appearance layers, testing
@@ -92,7 +92,7 @@ Extend `Plugin`, do your setup in `onload()`, and end the file with `register(Yo
 | `onunload()` | Called when the plugin is disabled, updated or uninstalled. Clean up anything you made yourself. | – |
 | `app` | The typed App API: `this.app.<namespace>.<method>(params)`. | per method |
 | `manifest` | Your parsed `manifest.json`. | – |
-| `addCommand({ id, title, description?, keywords?, run })` | Adds a command to the command palette (Ctrl/⌘ K) and the slash menu. `id` is local to your plugin. `run` gets a `MenuContext` when a menu item triggered it. | – |
+| `addCommand({ id, title, description?, keywords?, shortcut?, run })` | Adds a command to the command palette (Ctrl/⌘ K) and the slash menu. `id` is local to your plugin. `run` gets a `MenuContext` when a menu item triggered it. `shortcut` binds a key, e.g. `"Mod+Shift+K"` (see [Shortcuts](#shortcuts)). | – |
 | `addMenuItem({ id, menu, title, icon?, kinds?, nodeTypes?, blockTypes?, danger?, run })` | Adds an item to the page, tree, block, tab or status-bar menu. `run(context)` gets what the menu was opened on. See [Menu items](ui.md#menu-items). | `menus` |
 | `getOptions()` / `defineSettings(fields)` / `onOptionsChange(fn)` | Read the user's values from your **Options** screen, add fields at runtime, react to edits. See [Options](ui.md#options). | `settings.read` |
 | `registerEvent(name, handler)` | Subscribes to an app event (see below). Returns a disposer. | event's permission |
@@ -154,6 +154,29 @@ Some calls (moving pages to the trash, opening another workspace, resetting the 
 | `pages:changed` | `{ count }` | `pages.read` |
 | `panel:action` | `{ panelId, actionId }` | `ui.panel` |
 | `settings:changed` | `{ options, changed }` (the user edited your Options) | `settings.read` |
+| `selection:changed` | `EditorSelection & { pageId }` (debounced, the open page only) | `editor.read` |
+| `layout:changed` | `LayoutInfo` (panes, tabs, sidebars; debounced) | `layout` |
+| `view:message` | Whatever your panel view posted | `ui.panel` |
+
+## Shortcuts
+
+A command can carry a keyboard shortcut, in the manifest (`"shortcut": "Mod+Shift+K"`) or in `addCommand`. `Mod` is Ctrl on Windows and Linux and ⌘ on macOS; the other modifiers are `Shift` and `Alt` (Option). Keys are letters, digits, `F1`–`F24`, arrows (`Up`, `Down`, `Left`, `Right`), `Enter`, `Space`, `Tab`, `Backspace`, `Delete`, `Home`, `End`, `PageUp`, `PageDown` and punctuation such as `/` or `.`. Matching uses the physical key, so it works on any keyboard layout.
+
+A shortcut needs `Mod` (or `Alt` with another modifier, or an `F` key), so it never takes plain typing. Shortcuts the app or the editor already uses (Ctrl/⌘ K, Z, B, I, the heading keys …) and ones another command has bound are refused: the command is not added and the error shows in the plugin's log (`commands.register` rejects with `invalid_params`), and a manifest shortcut is skipped with a warning while the command still works from the palette. For a command declared in `manifest.json`, set `shortcut` there; `addCommand` only supplies its handler. The shortcut is shown next to the command in the palette.
+
+## Editing text
+
+Besides whole blocks (`editor.insertMarkdown`, `editor.updateBlock`, `editor.replaceBlocks`, `editor.removeBlocks`), SDK 2.1 can work at the cursor:
+
+```js
+const { cursorBlockId } = await this.app.editor.getSelection();
+const block = await this.app.editor.getBlock({ blockId: cursorBlockId }); // + parentId, prevId, nextId
+await this.app.editor.moveBlocks({ blockIds: [block.id], direction: "up" }); // ids stay the same
+await this.app.editor.insertText({ text: "— done" });
+await this.app.editor.formatText({ blockIds: [block.id], styles: { bold: true, textColor: "red" }, mode: "add" });
+await this.app.editor.select({ blockId: block.id, placement: "end" });
+this.registerEvent("selection:changed", (sel) => console.log(sel.text));
+```
 
 ## Permissions
 
