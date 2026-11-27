@@ -1,5 +1,5 @@
 {
-  "sdkVersion": "2.2.0",
+  "sdkVersion": "2.3.0",
   "generatedFrom": "frontend/src/sdk-host/spec.ts",
   "tiers": {
     "read": "Ask mode and up",
@@ -78,6 +78,12 @@
       "title": "Dialogs",
       "description": "Ask you to confirm, type an answer or pick from a list.",
       "risk": "low"
+    },
+    {
+      "id": "ui.overlay",
+      "title": "Floating overlays",
+      "description": "Float its own views above the app (timers, HUDs, sticky notes, effects). They can cover what's underneath.",
+      "risk": "medium"
     },
     {
       "id": "ui.styles",
@@ -1923,7 +1929,8 @@
                     "phone",
                     "createdTime",
                     "lastEdited",
-                    "formula"
+                    "formula",
+                    "custom"
                   ]
                 },
                 "options": {
@@ -2005,6 +2012,37 @@
                     }
                   },
                   "additionalProperties": false
+                },
+                "customType": {
+                  "type": "string",
+                  "description": "For type custom: a registered property type id (databases.listPropertyTypes), e.g. \"rating\".",
+                  "maxLength": 64
+                },
+                "config": {
+                  "description": "For type custom: per-property options the type defines (its config fields), merged into the current ones; null for a key removes it.",
+                  "json": true,
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  ]
                 }
               },
               "required": [
@@ -2096,7 +2134,8 @@
                     "phone",
                     "createdTime",
                     "lastEdited",
-                    "formula"
+                    "formula",
+                    "custom"
                   ]
                 },
                 "options": {
@@ -2178,6 +2217,37 @@
                     }
                   },
                   "additionalProperties": false
+                },
+                "customType": {
+                  "type": "string",
+                  "description": "For type custom: a registered property type id (databases.listPropertyTypes), e.g. \"rating\".",
+                  "maxLength": 64
+                },
+                "config": {
+                  "description": "For type custom: per-property options the type defines (its config fields), merged into the current ones; null for a key removes it.",
+                  "json": true,
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {},
+                      "additionalProperties": true
+                    }
+                  ]
                 }
               },
               "required": [
@@ -2266,7 +2336,8 @@
               "phone",
               "createdTime",
               "lastEdited",
-              "formula"
+              "formula",
+              "custom"
             ]
           },
           "options": {
@@ -2348,6 +2419,37 @@
               }
             },
             "additionalProperties": false
+          },
+          "customType": {
+            "type": "string",
+            "description": "For type custom: a registered property type id (databases.listPropertyTypes), e.g. \"rating\".",
+            "maxLength": 64
+          },
+          "config": {
+            "description": "For type custom: per-property options the type defines (its config fields), merged into the current ones; null for a key removes it.",
+            "json": true,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
           }
         },
         "required": [
@@ -4197,7 +4299,8 @@
               "phone",
               "createdTime",
               "lastEdited",
-              "formula"
+              "formula",
+              "custom"
             ]
           },
           "formula": {
@@ -4270,6 +4373,37 @@
               }
             },
             "additionalProperties": false
+          },
+          "customType": {
+            "type": "string",
+            "description": "For type custom: a registered property type id (databases.listPropertyTypes), e.g. \"rating\".",
+            "maxLength": 64
+          },
+          "config": {
+            "description": "For type custom: per-property options the type defines (its config fields), merged into the current ones; null for a key removes it.",
+            "json": true,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
           },
           "options": {
             "type": "array",
@@ -6092,42 +6226,58 @@
             "description": "Open at this y."
           },
           "anchor": {
-            "type": "object",
-            "description": "Rect to open next to (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element).",
-            "properties": {
-              "x": {
-                "type": "number",
-                "description": "Left."
+            "description": "What to open next to: a rect { x, y, width?, height? } (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element), or a name: \"self\" (the calling view's frame), \"status:<widget id>\" (your status widget), \"block:<block id>\", \"selection\" or \"pointer\".",
+            "anyOf": [
+              {
+                "type": "object",
+                "description": "Rect to open next to (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element).",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "Left."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Top."
+                  },
+                  "width": {
+                    "type": "number",
+                    "description": "Width."
+                  },
+                  "height": {
+                    "type": "number",
+                    "description": "Height."
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
               },
-              "y": {
-                "type": "number",
-                "description": "Top."
-              },
-              "width": {
-                "type": "number",
-                "description": "Width."
-              },
-              "height": {
-                "type": "number",
-                "description": "Height."
+              {
+                "type": "string",
+                "maxLength": 200
               }
-            },
-            "required": [
-              "x",
-              "y"
-            ],
-            "additionalProperties": false
+            ]
           },
           "placement": {
             "type": "string",
-            "description": "Where to open relative to the anchor.",
+            "description": "Where to open relative to the anchor (\"center\" = middle of the window).",
             "enum": [
               "bottom-start",
               "bottom-end",
+              "bottom-center",
               "top-start",
               "top-end",
+              "top-center",
               "right-start",
-              "left-start"
+              "right-end",
+              "right-center",
+              "left-start",
+              "left-end",
+              "left-center",
+              "center"
             ]
           },
           "width": {
@@ -6237,6 +6387,7 @@
     {
       "name": "ui.popover",
       "summary": "Open a small floating panel with your HTML next to an element or point; it closes on outside click or Escape. Resolves to the value passed to noteral.close(value), or null.",
+      "details": "A popover opened from inside another popover keeps its parent open. Opening one closes your other non-persistent popovers. Plugin code without a view can anchor to \"status:<widget id>\" or the `anchor` a status command receives.",
       "permission": "ui.modal",
       "tier": "read",
       "callers": [
@@ -6285,43 +6436,65 @@
             "description": "Open at this y."
           },
           "anchor": {
-            "type": "object",
-            "description": "Rect to open next to (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element).",
-            "properties": {
-              "x": {
-                "type": "number",
-                "description": "Left."
+            "description": "What to open next to: a rect { x, y, width?, height? } (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element), or a name: \"self\" (the calling view's frame), \"status:<widget id>\" (your status widget), \"block:<block id>\", \"selection\" or \"pointer\".",
+            "anyOf": [
+              {
+                "type": "object",
+                "description": "Rect to open next to (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element).",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "Left."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Top."
+                  },
+                  "width": {
+                    "type": "number",
+                    "description": "Width."
+                  },
+                  "height": {
+                    "type": "number",
+                    "description": "Height."
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
               },
-              "y": {
-                "type": "number",
-                "description": "Top."
-              },
-              "width": {
-                "type": "number",
-                "description": "Width."
-              },
-              "height": {
-                "type": "number",
-                "description": "Height."
+              {
+                "type": "string",
+                "maxLength": 200
               }
-            },
-            "required": [
-              "x",
-              "y"
-            ],
-            "additionalProperties": false
+            ]
           },
           "placement": {
             "type": "string",
-            "description": "Where to open relative to the anchor.",
+            "description": "Where to open relative to the anchor (\"center\" = middle of the window).",
             "enum": [
               "bottom-start",
               "bottom-end",
+              "bottom-center",
               "top-start",
               "top-end",
+              "top-center",
               "right-start",
-              "left-start"
+              "right-end",
+              "right-center",
+              "left-start",
+              "left-end",
+              "left-center",
+              "center"
             ]
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Gap to the anchor in px (default 4).",
+            "minimum": -40,
+            "maximum": 80
           },
           "width": {
             "type": "integer",
@@ -6334,6 +6507,33 @@
             "description": "Fixed height in px; omit to grow with the content.",
             "minimum": 40,
             "maximum": 900
+          },
+          "maxHeight": {
+            "type": "integer",
+            "description": "Cap for a growing popover (default 70% of the window).",
+            "minimum": 40,
+            "maximum": 2000
+          },
+          "name": {
+            "type": "string",
+            "description": "Your name for it: opening the same name again replaces it, and ui.updatePopover / ui.closePopups can target it.",
+            "maxLength": 64
+          },
+          "toggle": {
+            "type": "boolean",
+            "description": "With a name: close it instead if it is already open (a status widget's click)."
+          },
+          "bare": {
+            "type": "boolean",
+            "description": "No background, border, radius or shadow — your HTML paints the whole panel (transparent popovers, custom shapes)."
+          },
+          "persistent": {
+            "type": "boolean",
+            "description": "Outside clicks don't close it (Escape, noteral.close or a toggle do)."
+          },
+          "escape": {
+            "type": "boolean",
+            "description": "Escape closes it (default true)."
           }
         },
         "required": [
@@ -6342,11 +6542,11 @@
         "additionalProperties": false
       },
       "returns": "unknown",
-      "example": "button.onclick = () => noteral.popover({ html: \"<p>Details…</p>\", width: 260 }, button);"
+      "example": "button.onclick = () => noteral.popover({ html: \"<p>Details…</p>\", width: 260, name: \"details\", toggle: true }, button);"
     },
     {
-      "name": "ui.closePopups",
-      "summary": "Close every modal and popover you opened.",
+      "name": "ui.updatePopover",
+      "summary": "Change an open popover by name: new data (sent to the view as props, no reload), html, size or position. Returns false when it isn't open.",
       "permission": "ui.modal",
       "tier": "read",
       "callers": [
@@ -6355,7 +6555,135 @@
       "confirm": false,
       "params": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name it was opened with.",
+            "maxLength": 64
+          },
+          "data": {
+            "description": "New noteral.props.data.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "anchor": {
+            "description": "What to open next to: a rect { x, y, width?, height? } (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element), or a name: \"self\" (the calling view's frame), \"status:<widget id>\" (your status widget), \"block:<block id>\", \"selection\" or \"pointer\".",
+            "anyOf": [
+              {
+                "type": "object",
+                "description": "Rect to open next to (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element).",
+                "properties": {
+                  "x": {
+                    "type": "number",
+                    "description": "Left."
+                  },
+                  "y": {
+                    "type": "number",
+                    "description": "Top."
+                  },
+                  "width": {
+                    "type": "number",
+                    "description": "Width."
+                  },
+                  "height": {
+                    "type": "number",
+                    "description": "Height."
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "string",
+                "maxLength": 200
+              }
+            ]
+          },
+          "placement": {
+            "type": "string",
+            "description": "Where to open relative to the anchor (\"center\" = middle of the window).",
+            "enum": [
+              "bottom-start",
+              "bottom-end",
+              "bottom-center",
+              "top-start",
+              "top-end",
+              "top-center",
+              "right-start",
+              "right-end",
+              "right-center",
+              "left-start",
+              "left-end",
+              "left-center",
+              "center"
+            ]
+          },
+          "width": {
+            "type": "integer",
+            "description": "Width in px.",
+            "minimum": 120,
+            "maximum": 900
+          },
+          "height": {
+            "type": "integer",
+            "description": "Height in px.",
+            "minimum": 40,
+            "maximum": 900
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "boolean"
+    },
+    {
+      "name": "ui.closePopups",
+      "summary": "Close every modal and popover you opened, or only the popover with `name`.",
+      "permission": "ui.modal",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Only this named popover.",
+            "maxLength": 64
+          }
+        },
         "additionalProperties": false
       },
       "returns": "void"
@@ -6954,8 +7282,8 @@
     },
     {
       "name": "statusBar.setWidget",
-      "summary": "Add or update a status bar widget: text with an icon and click command, or a small HTML view.",
-      "details": "HTML widgets render in a 22px-high sandboxed frame (`width` px wide) and can call the App API with the owner's permissions.",
+      "summary": "Add or replace a status bar widget: text with an icon, badge, colours and progress, or a small HTML view; a click runs a command or opens a popup next to it.",
+      "details": "HTML widgets render in a 22px-high sandboxed frame and can call the App API with the owner's permissions; width \"auto\" fits their content, \"fill\" or \"100%\" takes all the free space of the bar (the other side shrinks to its content). `popup` opens your HTML in a popover anchored to the widget (a second click closes it). Plugin commands run from a widget get { source: \"status\", widget, anchor } as their argument. Use statusBar.updateWidget for live values.",
       "permission": "ui.status",
       "tier": "app",
       "callers": [
@@ -7028,6 +7356,121 @@
             "description": "Command id to run on click (see commands.list).",
             "maxLength": 200
           },
+          "minWidth": {
+            "type": "integer",
+            "description": "Minimum width in px.",
+            "minimum": 0,
+            "maximum": 2000
+          },
+          "maxWidth": {
+            "type": "integer",
+            "description": "Maximum width in px.",
+            "minimum": 16,
+            "maximum": 4000
+          },
+          "popup": {
+            "description": "Popover opened by a click, anchored to the widget: { html, width?, height?, placement?, bare?, persistent?, data? } (or just the html string). Default placement opens upwards, aligned to the widget's side.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "badge": {
+            "description": "Small pill after the text: a count or short label (max 24 chars).",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "tone": {
+            "type": "string",
+            "description": "Colour preset.",
+            "enum": [
+              "default",
+              "muted",
+              "accent",
+              "success",
+              "warning",
+              "danger"
+            ]
+          },
+          "color": {
+            "type": "string",
+            "description": "Text colour: hex, rgb()/hsl(), var(--token) or a CSS colour name.",
+            "maxLength": 60
+          },
+          "background": {
+            "type": "string",
+            "description": "Background colour (same forms as color).",
+            "maxLength": 60
+          },
+          "progress": {
+            "type": "number",
+            "description": "0–1: a thin progress bar along the widget's bottom edge.",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "data": {
+            "description": "JSON for HTML widgets as noteral.props.data (changes arrive without reloading).",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
           "layer": {
             "type": "string",
             "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
@@ -7040,6 +7483,786 @@
         "additionalProperties": false
       },
       "returns": "StatusWidgetInfo"
+    },
+    {
+      "name": "statusBar.updateWidget",
+      "summary": "Change some fields of one of your status widgets (text, badge, progress, data, popup…) without resending it; null removes a field.",
+      "details": "Cheap enough for live values (timers, counters, sync progress). HTML widgets receive a changed `data` as noteral.props.data without reloading.",
+      "permission": "ui.status",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Widget id.",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "description": "Text.",
+            "maxLength": 160
+          },
+          "tooltip": {
+            "type": "string",
+            "description": "Tooltip.",
+            "maxLength": 300
+          },
+          "icon": {
+            "type": "string",
+            "description": "Icon: an emoji or a Lucide icon name such as \"chart-line\".",
+            "maxLength": 60
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "width": {
+            "description": "Width: px (16-1200), \"auto\" (fit content), \"fill\" (take the free space) or \"NN%\" of the bar. HTML widgets default to 120px.",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 16,
+                "maximum": 1200
+              },
+              {
+                "type": "string",
+                "maxLength": 8
+              }
+            ]
+          },
+          "side": {
+            "type": "string",
+            "description": "Side.",
+            "enum": [
+              "left",
+              "center",
+              "right"
+            ]
+          },
+          "order": {
+            "type": "integer",
+            "description": "Order (lower first).",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "command": {
+            "type": "string",
+            "description": "Command id to run on click.",
+            "maxLength": 200
+          },
+          "minWidth": {
+            "type": "integer",
+            "description": "Minimum width in px.",
+            "minimum": 0,
+            "maximum": 2000
+          },
+          "maxWidth": {
+            "type": "integer",
+            "description": "Maximum width in px.",
+            "minimum": 16,
+            "maximum": 4000
+          },
+          "popup": {
+            "description": "Popover opened by a click, anchored to the widget: { html, width?, height?, placement?, bare?, persistent?, data? } (or just the html string). Default placement opens upwards, aligned to the widget's side.",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "badge": {
+            "description": "Small pill after the text: a count or short label (max 24 chars).",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "tone": {
+            "type": "string",
+            "description": "Colour preset.",
+            "enum": [
+              "default",
+              "muted",
+              "accent",
+              "success",
+              "warning",
+              "danger"
+            ]
+          },
+          "color": {
+            "type": "string",
+            "description": "Text colour: hex, rgb()/hsl(), var(--token) or a CSS colour name.",
+            "maxLength": 60
+          },
+          "background": {
+            "type": "string",
+            "description": "Background colour (same forms as color).",
+            "maxLength": 60
+          },
+          "progress": {
+            "type": "number",
+            "description": "0–1: a thin progress bar along the widget's bottom edge.",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "data": {
+            "description": "JSON for HTML widgets as noteral.props.data (changes arrive without reloading).",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "unknown"
+    },
+    {
+      "name": "ui.listOverlays",
+      "summary": "List floating overlays (yours and others'), with owner, position and stack.",
+      "permission": "ui.overlay",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "unknown"
+    },
+    {
+      "name": "ui.setOverlay",
+      "summary": "Create or replace a floating overlay: your HTML view pinned above the app (a HUD, timer, mini player, sticky note, toast area or full-screen effect).",
+      "details": "Overlays sit in a layer over every pane and don't move the layout. position picks a corner/edge/center or \"full\" (covers the window); x/y offset from it. interactive:false lets clicks pass through (pure decoration/visual effects). draggable adds a grip the user drags (remembered; double-click the grip resets). chrome adds the app's card border and shadow. stack \"top\" puts it above menus and dialogs too (use sparingly). The view gets props.data and the overlay's own id; ui.updateOverlay changes fields without reloading the view.",
+      "permission": "ui.overlay",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Overlay id (letters, digits, dots, dashes, underscores).",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "title": {
+            "type": "string",
+            "description": "Name shown on the drag grip and to screen readers.",
+            "maxLength": 80
+          },
+          "position": {
+            "type": "string",
+            "description": "Where it's pinned.",
+            "enum": [
+              "top-left",
+              "top",
+              "top-right",
+              "left",
+              "center",
+              "right",
+              "bottom-left",
+              "bottom",
+              "bottom-right",
+              "full"
+            ],
+            "default": "bottom-right"
+          },
+          "x": {
+            "type": "integer",
+            "description": "Horizontal offset in px from the position (positive moves inward).",
+            "minimum": -4000,
+            "maximum": 4000
+          },
+          "y": {
+            "type": "integer",
+            "description": "Vertical offset in px from the position (positive moves inward).",
+            "minimum": -4000,
+            "maximum": 4000
+          },
+          "width": {
+            "description": "Width: px (8-8000) or \"NN%\" of the window. Default 280 (full: 100%).",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 8,
+                "maximum": 8000
+              },
+              {
+                "type": "string",
+                "maxLength": 8
+              }
+            ]
+          },
+          "height": {
+            "description": "Height: px, \"NN%\" of the window, or \"auto\" (default: fits the content).",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 8,
+                "maximum": 8000
+              },
+              {
+                "type": "string",
+                "maxLength": 8
+              }
+            ]
+          },
+          "interactive": {
+            "type": "boolean",
+            "description": "false: clicks pass through to the app underneath.",
+            "default": true
+          },
+          "draggable": {
+            "type": "boolean",
+            "description": "Show a grip so the user can move it.",
+            "default": false
+          },
+          "chrome": {
+            "type": "boolean",
+            "description": "Card border, background and shadow around the view.",
+            "default": false
+          },
+          "opacity": {
+            "type": "number",
+            "description": "Opacity 0.05-1.",
+            "minimum": 0.05,
+            "maximum": 1
+          },
+          "stack": {
+            "type": "string",
+            "description": "app (default): above the app, below menus/popovers/dialogs. top: above everything.",
+            "enum": [
+              "app",
+              "top"
+            ]
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Keep it registered but hidden.",
+            "default": false
+          },
+          "order": {
+            "type": "integer",
+            "description": "Stacking order among overlays (higher on top).",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "data": {
+            "description": "Passed to the view as noteral.props.data.",
+            "json": true,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id",
+          "html"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "unknown"
+    },
+    {
+      "name": "ui.updateOverlay",
+      "summary": "Change some fields of one of your overlays (data, position, hidden, opacity…); null removes a field. A changed data reaches the view as props without reloading.",
+      "permission": "ui.overlay",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Overlay id.",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "html": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "title": {
+            "type": "string",
+            "description": "Title.",
+            "maxLength": 80
+          },
+          "position": {
+            "type": "string",
+            "description": "Position.",
+            "enum": [
+              "top-left",
+              "top",
+              "top-right",
+              "left",
+              "center",
+              "right",
+              "bottom-left",
+              "bottom",
+              "bottom-right",
+              "full"
+            ]
+          },
+          "x": {
+            "type": "integer",
+            "description": "X offset.",
+            "minimum": -4000,
+            "maximum": 4000
+          },
+          "y": {
+            "type": "integer",
+            "description": "Y offset.",
+            "minimum": -4000,
+            "maximum": 4000
+          },
+          "width": {
+            "description": "Width (px or NN%).",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 8,
+                "maximum": 8000
+              },
+              {
+                "type": "string",
+                "maxLength": 8
+              }
+            ]
+          },
+          "height": {
+            "description": "Height (px, NN% or auto).",
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 8,
+                "maximum": 8000
+              },
+              {
+                "type": "string",
+                "maxLength": 8
+              }
+            ]
+          },
+          "interactive": {
+            "type": "boolean",
+            "description": "Clickable."
+          },
+          "draggable": {
+            "type": "boolean",
+            "description": "Draggable."
+          },
+          "chrome": {
+            "type": "boolean",
+            "description": "Card chrome."
+          },
+          "opacity": {
+            "type": "number",
+            "description": "Opacity.",
+            "minimum": 0.05,
+            "maximum": 1
+          },
+          "stack": {
+            "type": "string",
+            "description": "Stack.",
+            "enum": [
+              "app",
+              "top"
+            ]
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Hidden."
+          },
+          "order": {
+            "type": "integer",
+            "description": "Order.",
+            "minimum": -100,
+            "maximum": 100
+          },
+          "data": {
+            "description": "New props.data.",
+            "json": true,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "unknown"
+    },
+    {
+      "name": "ui.removeOverlay",
+      "summary": "Remove one of your floating overlays.",
+      "permission": "ui.overlay",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Overlay id."
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "databases.listPropertyTypes",
+      "summary": "List the custom database property types plugins and layers registered (use one with type \"custom\" + customType).",
+      "permission": "databases.read",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "unknown"
+    },
+    {
+      "name": "databases.registerPropertyType",
+      "summary": "Register a new database property type with its own cell look, editor and per-property options (ratings, progress, tags, colors, money, links…).",
+      "details": "valueType (text, number, checkbox, date) decides how values sort, filter, group and calculate. render is a cell template: {{value}}, {{text}}, {{config.key}}, {{row.title}}, filters {{value | percent}} (upper, lower, fixed:n, round:n, number, date, default:x, truncate:n, times:n, divide:n, plus:n, minus:n, min:n, max:n, clamp01, join:\", \", length, json), blocks {{#if value >= 3}}…{{else}}…{{/if}}, {{#unless empty}}, {{#each value}}{{this}}{{/each}}, {{#repeat config.max}}{{@number}}{{/repeat}}. Output is escaped and sanitized (no script, no remote loads) and shown in a shadow root styled by css (theme variables like var(--accent) work). In a cell, clicking an element with data-value=\"json\" sets the value (add data-toggle to clear it when it's already set); data-edit opens the editor. editor is an HTML view in a popover: props { value, raw, config, property, row }; noteral.setData(v) saves, noteral.close(v?) saves (if given) and closes. Without editor, the value type's built-in editor is used. config fields (like plugin settings: toggle, text, number, slider, select, color…) appear in the property's menu. SDK plugins can render cells in their worker instead (registerPropertyType({ render: (ctx) => html })).",
+      "permission": "databases.read",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type id stored in databases — keep it stable (lowercase letters, digits, dots, dashes, underscores).",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "description": "Name in the type picker.",
+            "maxLength": 60
+          },
+          "icon": {
+            "type": "string",
+            "description": "Icon: an emoji or a Lucide icon name such as \"chart-line\".",
+            "maxLength": 60
+          },
+          "description": {
+            "type": "string",
+            "description": "Shown in the type picker.",
+            "maxLength": 200
+          },
+          "valueType": {
+            "type": "string",
+            "description": "How values behave.",
+            "enum": [
+              "text",
+              "number",
+              "checkbox",
+              "date"
+            ],
+            "default": "text"
+          },
+          "render": {
+            "type": "string",
+            "description": "Cell template (see details).",
+            "maxLength": 40000
+          },
+          "css": {
+            "type": "string",
+            "description": "CSS for cells (scoped to the cell's shadow root).",
+            "maxLength": 40000
+          },
+          "editor": {
+            "type": "string",
+            "description": "HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined.",
+            "maxLength": 400000
+          },
+          "editorWidth": {
+            "type": "integer",
+            "description": "Editor popover width in px.",
+            "minimum": 120,
+            "maximum": 900
+          },
+          "editorHeight": {
+            "type": "integer",
+            "description": "Editor's initial height in px.",
+            "minimum": 40,
+            "maximum": 900
+          },
+          "config": {
+            "type": "array",
+            "description": "Per-property options: { key, type (toggle, text, textarea, number, slider, select, color), label, description?, default?, options?, min?, max?, step? }.",
+            "items": {
+              "description": "Field",
+              "json": true,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": true
+                }
+              ]
+            },
+            "maxItems": 20
+          },
+          "defaultValue": {
+            "description": "Value shown for rows that have none.",
+            "json": true,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "align": {
+            "type": "string",
+            "description": "Cell alignment.",
+            "enum": [
+              "start",
+              "center",
+              "end"
+            ]
+          },
+          "renderer": {
+            "type": "boolean",
+            "description": "The plugin renders cells itself (set by the SDK when render is a function).",
+            "default": false
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "unknown"
+    },
+    {
+      "name": "databases.unregisterPropertyType",
+      "summary": "Remove a property type you registered (existing values are kept and show as plain text).",
+      "permission": "databases.read",
+      "tier": "app",
+      "callers": [
+        "plugin",
+        "assistant"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type id."
+          },
+          "layer": {
+            "type": "string",
+            "description": "Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. \"base\" writes the base look.",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
     },
     {
       "name": "statusBar.removeWidget",

@@ -1,6 +1,6 @@
 # Noteral plugin SDK
 
-> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.2.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
+> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.3.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
 
 Rules for agents writing plugins:
 - Extend `Plugin`, put setup in `onload()`, and finish main.js with `register(MyPlugin)`. Use `this.addCommand`, `this.registerEvent`, `this.registerInterval` so cleanup is automatic.
@@ -72,7 +72,7 @@ Rules for agents writing plugins:
 - databases.queryRows({databaseId, where?, limit?}) → DatabaseRowInfo[] [databases.read] — Read a database's rows with values keyed by property name.
 - databases.create({title, parentId?, properties?, view?, open?}) → { databaseId: string } [databases.write] — Create a database (a page in the tree) with properties and a first view.
 - databases.embed({pageId?, databaseId?, title?, properties?, view?, position?, blockId?, anchor?}) → { databaseId: string; pageId: string; created: boolean } [databases.write] — Put a database inside a page's content: a new inline database, or a linked view of an existing one.
-- databases.addProperty({databaseId, name, type, options?, formula?, format?, dateFormat?, display?}) → { propertyId: string } [databases.write] — Add a property (column) to a database.
+- databases.addProperty({databaseId, name, type, options?, formula?, format?, dateFormat?, display?, customType?, config?}) → { propertyId: string } [databases.write] — Add a property (column) to a database.
 - databases.addRow({databaseId, title?, values?}) → { rowId: string } [databases.write] — Add a row; values are keyed by property name.
 - databases.addRows({databaseId, rows}) → { rowIds: string[]; count: number } [databases.write] — Add many rows in one call (up to 500). Prefer this over repeated addRow.
 - databases.updateRows({updates}) → { count: number } [databases.write] — Change many rows in one call (up to 500).
@@ -84,7 +84,7 @@ Rules for agents writing plugins:
 - databases.removeView({databaseId, viewId}) → void [databases.write] — Remove a view (a database keeps at least one).
 - databases.duplicateView({databaseId, viewId, name?}) → DatabaseViewInfo [databases.write] — Copy a view with all its settings.
 - databases.moveView({databaseId, viewId, index}) → void [databases.write] — Move a view to another position in the view tabs.
-- databases.updateProperty({databaseId, property, name?, type?, formula?, format?, dateFormat?, display?, options?}) → DatabaseSchemaInfo [databases.write] — Rename a property, change its type, formula, number/date format or select options.
+- databases.updateProperty({databaseId, property, name?, type?, formula?, format?, dateFormat?, display?, customType?, config?, options?}) → DatabaseSchemaInfo [databases.write] — Rename a property, change its type, formula, number/date format or select options.
 - databases.formulaFunctions({}) → string [databases.read] — The formula language: syntax and every function (math, text, style/link formatting, dates, lists, lambdas), one line each.
 - databases.checkFormula({databaseId, formula, property?}) → { ok: boolean; error?: string; resultType?: string; sample?: { title: string; value: unknown; error?: string }[] } [databases.read] — Check a formula against a database without saving: errors (with line/column and did-you-mean hints), result type and sample results.
 - databases.removeProperty({databaseId, property}) → void [databases.write] — Delete a property and its values from every row.
@@ -141,8 +141,9 @@ Rules for agents writing plugins:
 - ui.ask({question, options?, multiple?, allowText?, placeholder?}) → AskResult [ui.modal] — Ask the user a question with choices and/or a free-text answer, and wait for the reply.
 - ui.menu({items, x?, y?, anchor?, placement?, width?, filter?}) → string | null [ui.modal] — Open a menu (context menu or dropdown) and wait for the choice. Resolves to the chosen item id, or null when dismissed.
 - ui.showModal({html, title?, subtitle?, data?, width?, height?, dismissible?, bare?}) → unknown [ui.modal] — Open a modal dialog that renders your HTML, and wait until it closes. Resolves to the value passed to noteral.close(value) (or noteral.setData), or null when dismissed.
-- ui.popover({html, data?, x?, y?, anchor?, placement?, width?, height?}) → unknown [ui.modal] — Open a small floating panel with your HTML next to an element or point; it closes on outside click or Escape. Resolves to the value passed to noteral.close(value), or null.
-- ui.closePopups({}) → void [ui.modal] — Close every modal and popover you opened.
+- ui.popover({html, data?, x?, y?, anchor?, placement?, offset?, width?, height?, maxHeight?, name?, toggle?, bare?, persistent?, escape?}) → unknown [ui.modal] — Open a small floating panel with your HTML next to an element or point; it closes on outside click or Escape. Resolves to the value passed to noteral.close(value), or null.
+- ui.updatePopover({name, data?, html?, anchor?, placement?, width?, height?}) → boolean [ui.modal] — Change an open popover by name: new data (sent to the view as props, no reload), html, size or position. Returns false when it isn't open.
+- ui.closePopups({name?}) → void [ui.modal] — Close every modal and popover you opened, or only the popover with `name`.
 - ui.setStatus({itemId, text, title?}) → void [ui.status] — Show text in the status bar (declare the item in manifest.contributes.statusItems or by id).
 - ui.setPanel({panelId, title?, markdown, actions?}) → void [ui.panel] — Render a sidebar panel from Markdown, with optional action buttons.
 - ui.addStyles({css}) → void [ui.styles] — Add CSS for the plugin's own look (replaces the plugin's previous styles).
@@ -158,7 +159,15 @@ Rules for agents writing plugins:
 - sidebar.setLayout({groups, width?}) → SidebarInfo [layout] — Arrange the right sidebar: stacked groups of tabs, their order, sizes and active tabs.
 - sidebar.moveTab({id, group, index?}) → SidebarInfo [layout] — Move a tab to another group (or a new group) and position.
 - statusBar.list({}) → StatusWidgetInfo[] — List status bar widgets (built-in and custom).
-- statusBar.setWidget({id, text?, tooltip?, icon?, html?, width?, side?, order?, command?, layer?}) → StatusWidgetInfo [ui.status] — Add or update a status bar widget: text with an icon and click command, or a small HTML view.
+- statusBar.setWidget({id, text?, tooltip?, icon?, html?, width?, side?, order?, command?, minWidth?, maxWidth?, popup?, badge?, tone?, color?, background?, progress?, data?, layer?}) → StatusWidgetInfo [ui.status] — Add or replace a status bar widget: text with an icon, badge, colours and progress, or a small HTML view; a click runs a command or opens a popup next to it.
+- statusBar.updateWidget({id, text?, tooltip?, icon?, html?, width?, side?, order?, command?, minWidth?, maxWidth?, popup?, badge?, tone?, color?, background?, progress?, data?, layer?}) → unknown [ui.status] — Change some fields of one of your status widgets (text, badge, progress, data, popup…) without resending it; null removes a field.
+- ui.listOverlays({}) → unknown [ui.overlay] — List floating overlays (yours and others'), with owner, position and stack.
+- ui.setOverlay({id, html, title?, position?, x?, y?, width?, height?, interactive?, draggable?, chrome?, opacity?, stack?, hidden?, order?, data?, layer?}) → unknown [ui.overlay] — Create or replace a floating overlay: your HTML view pinned above the app (a HUD, timer, mini player, sticky note, toast area or full-screen effect).
+- ui.updateOverlay({id, html?, title?, position?, x?, y?, width?, height?, interactive?, draggable?, chrome?, opacity?, stack?, hidden?, order?, data?, layer?}) → unknown [ui.overlay] — Change some fields of one of your overlays (data, position, hidden, opacity…); null removes a field. A changed data reaches the view as props without reloading.
+- ui.removeOverlay({id, layer?}) → void [ui.overlay] — Remove one of your floating overlays.
+- databases.listPropertyTypes({}) → unknown [databases.read] — List the custom database property types plugins and layers registered (use one with type "custom" + customType).
+- databases.registerPropertyType({type, title?, icon?, description?, valueType?, render?, css?, editor?, editorWidth?, editorHeight?, config?, defaultValue?, align?, renderer?, layer?}) → unknown [databases.read] — Register a new database property type with its own cell look, editor and per-property options (ratings, progress, tags, colors, money, links…).
+- databases.unregisterPropertyType({type, layer?}) → void [databases.read] — Remove a property type you registered (existing values are kept and show as plain text).
 - statusBar.removeWidget({id, layer?}) → void [ui.status] — Remove a status bar widget.
 - statusBar.getLayout({}) → StatusBarLayoutInfo — The status bar layout in effect (separators, gap, height, per-item hidden/side/order/width) and every item with where it shows now.
 - statusBar.configure({separator?, gap?, height?, padding?, fontSize?, hidden?, items?, reset?, layer?}) → StatusBarLayoutInfo [ui.status] — Customize the whole status bar: hide/move/reorder/resize any item (built-in or custom), separators between items, gap, height, padding, text size, or hide the bar.
@@ -235,6 +244,7 @@ Rules for agents writing plugins:
 - ui.notify (low): Show toast notifications.
 - ui.panel (low): Add tabs to the right sidebar.
 - ui.modal (low): Ask you to confirm, type an answer or pick from a list.
+- ui.overlay (medium): Float its own views above the app (timers, HUDs, sticky notes, effects). They can cover what's underneath.
 - ui.styles (medium): Add CSS to the app (for the plugin's own look).
 - settings.read (low): Read the plugin's own saved settings.
 - settings.write (low): Save the plugin's own settings.

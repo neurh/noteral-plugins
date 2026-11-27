@@ -9,8 +9,11 @@
 import type { NoteralApp, NoteralEventMap, NoteralEventName } from "./api.generated";
 import type {
   EditorSnapshot,
+  OverlayDefinition,
   PanelAction,
   PluginManifest,
+  PropertyCellContext,
+  PropertyTypeDefinition,
   StatusOptions,
   StorageEntryInfo,
   StorageUsageInfo,
@@ -21,7 +24,7 @@ import type {
 /** "workspace" keeps one copy per workspace; "global" is shared by all of them. */
 export type StorageScope = "workspace" | "global";
 
-export const SDK_VERSION = "2.2.0";
+export const SDK_VERSION = "2.3.0";
 
 type Json = Record<string, unknown>;
 type Disposer = () => void;
@@ -406,6 +409,54 @@ export class Plugin {
       commandHandlers.delete(select);
       void call("editor.unregisterSuggester", { id: options.id }).catch(() => undefined);
     });
+  }
+
+  /**
+   * Adds a database property type. `render` is a cell template string (see
+   * databases.registerPropertyType) or a function that returns the cell's HTML — it runs
+   * here in the worker, once per distinct value/config, and the result is sanitized.
+   *
+   * ```ts
+   * this.registerPropertyType({
+   *   type: "rating", title: "Rating", icon: "star", valueType: "number",
+   *   config: [{ key: "max", type: "slider", label: "Stars", min: 3, max: 10, default: 5 }],
+   *   render: `{{#repeat config.max}}<span data-value="{{@number}}" data-toggle
+   *     class="{{#if @number <= value}}on{{/if}}">★</span>{{/repeat}}`,
+   *   css: `span{color:var(--text-faint)} .on{color:var(--accent)}`,
+   * });
+   * ```
+   */
+  registerPropertyType(def: PropertyTypeDefinition): Promise<unknown> {
+    const { render, ...rest } = def;
+    const handler = `__cell:${def.type}`;
+    if (typeof render === "function") commandHandlers.set(handler, (context: PropertyCellContext) => render(context));
+    else commandHandlers.delete(handler);
+    this.register(() => commandHandlers.delete(handler));
+    const params = typeof render === "function" ? { ...rest, renderer: true } : { ...rest, ...(render ? { render } : {}) };
+    return call("databases.registerPropertyType", params);
+  }
+
+  /**
+   * Shows a floating overlay (an HTML view above the app) and returns a handle to update or
+   * remove it. It's removed when the plugin unloads.
+   */
+  addOverlay(def: OverlayDefinition): { id: string; update(patch: Partial<Omit<OverlayDefinition, "id">>): Promise<unknown>; remove(): Promise<unknown> } {
+    const ready = call("ui.setOverlay", def as unknown as Record<string, unknown>).catch((error) => {
+      reportError(error);
+      throw error;
+    });
+    let removed = false;
+    const remove = () => {
+      if (removed) return Promise.resolve();
+      removed = true;
+      return ready.then(() => call("ui.removeOverlay", { id: def.id })).catch(() => undefined);
+    };
+    this.register(() => void remove());
+    return {
+      id: def.id,
+      update: (patch) => ready.then(() => call("ui.updateOverlay", { ...patch, id: def.id })),
+      remove,
+    };
   }
 
   /**

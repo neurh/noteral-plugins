@@ -751,7 +751,7 @@ export interface PluginTestResult {
   error?: string;
   logs: { level: string; message: string }[];
   commands: string[];
-  contributions: { sidebarTabs: string[]; statusWidgets: string[]; blockTypes: string[]; nodeTypes: string[]; menuItems: string[]; settings: string[]; panels: string[]; statusItems: string[] };
+  contributions: { sidebarTabs: string[]; statusWidgets: string[]; blockTypes: string[]; nodeTypes: string[]; menuItems: string[]; settings: string[]; overlays: string[]; propertyTypes: string[]; panels: string[]; statusItems: string[] };
   /** App API methods the code called. */
   calls: string[];
   /** Write calls that were skipped during the test. */
@@ -826,6 +826,78 @@ export interface SuggestContext {
   trigger: string;
   pageId: string | null;
   blockId: string | null;
+}
+
+/** What a custom property type's template, renderer function and editor view receive. */
+export interface PropertyCellContext {
+  /** The cell's value (for stored `{ value, ... }` objects, their `value`). */
+  value: unknown;
+  /** The stored value as is. */
+  raw: unknown;
+  /** Plain-text form of the value. */
+  text: string;
+  empty: boolean;
+  /** The property's options (the type's config fields, defaults filled in). */
+  config: Record<string, unknown>;
+  property: { id: string; name: string; type: string };
+  row: { id: string; title: string };
+  /** Shown in a card or list (less room). */
+  compact: boolean;
+}
+
+/** A config field of a custom property type, edited in the property's menu. */
+export interface PropertyConfigField {
+  key: string;
+  type: "toggle" | "text" | "textarea" | "number" | "slider" | "select" | "color";
+  label: string;
+  description?: string;
+  default?: unknown;
+  options?: { value: string; label: string }[];
+  min?: number;
+  max?: number;
+  step?: number;
+  placeholder?: string;
+}
+
+/** this.registerPropertyType(...) in the SDK. */
+export interface PropertyTypeDefinition {
+  /** Stored in databases: keep it stable. */
+  type: string;
+  title?: string;
+  icon?: string;
+  description?: string;
+  /** How values sort, filter, group and calculate. Default "text". */
+  valueType?: "text" | "number" | "checkbox" | "date";
+  /** A cell template string, or a function (runs in the plugin) returning the cell's HTML. */
+  render?: string | ((context: PropertyCellContext) => string | Promise<string>);
+  css?: string;
+  /** HTML view to edit a value in a popover (props: PropertyCellContext). */
+  editor?: string;
+  editorWidth?: number;
+  editorHeight?: number;
+  config?: PropertyConfigField[];
+  defaultValue?: unknown;
+  align?: "start" | "center" | "end";
+}
+
+/** this.addOverlay(...) in the SDK / ui.setOverlay. */
+export interface OverlayDefinition {
+  id: string;
+  html: string;
+  title?: string;
+  position?: "top-left" | "top" | "top-right" | "left" | "center" | "right" | "bottom-left" | "bottom" | "bottom-right" | "full";
+  x?: number;
+  y?: number;
+  width?: number | string;
+  height?: number | string;
+  interactive?: boolean;
+  draggable?: boolean;
+  chrome?: boolean;
+  opacity?: number;
+  stack?: "app" | "top";
+  hidden?: boolean;
+  order?: number;
+  data?: unknown;
 }
 
 /** Payload of page:created, page:deleted (and the base of page:renamed / page:moved). */

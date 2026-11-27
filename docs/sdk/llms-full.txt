@@ -1,6 +1,6 @@
 # Noteral plugin SDK
 
-> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.2.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
+> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.3.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
 
 Rules for agents writing plugins:
 - Extend `Plugin`, put setup in `onload()`, and finish main.js with `register(MyPlugin)`. Use `this.addCommand`, `this.registerEvent`, `this.registerInterval` so cleanup is automatic.
@@ -72,7 +72,7 @@ Rules for agents writing plugins:
 - databases.queryRows({databaseId, where?, limit?}) → DatabaseRowInfo[] [databases.read] — Read a database's rows with values keyed by property name.
 - databases.create({title, parentId?, properties?, view?, open?}) → { databaseId: string } [databases.write] — Create a database (a page in the tree) with properties and a first view.
 - databases.embed({pageId?, databaseId?, title?, properties?, view?, position?, blockId?, anchor?}) → { databaseId: string; pageId: string; created: boolean } [databases.write] — Put a database inside a page's content: a new inline database, or a linked view of an existing one.
-- databases.addProperty({databaseId, name, type, options?, formula?, format?, dateFormat?, display?}) → { propertyId: string } [databases.write] — Add a property (column) to a database.
+- databases.addProperty({databaseId, name, type, options?, formula?, format?, dateFormat?, display?, customType?, config?}) → { propertyId: string } [databases.write] — Add a property (column) to a database.
 - databases.addRow({databaseId, title?, values?}) → { rowId: string } [databases.write] — Add a row; values are keyed by property name.
 - databases.addRows({databaseId, rows}) → { rowIds: string[]; count: number } [databases.write] — Add many rows in one call (up to 500). Prefer this over repeated addRow.
 - databases.updateRows({updates}) → { count: number } [databases.write] — Change many rows in one call (up to 500).
@@ -84,7 +84,7 @@ Rules for agents writing plugins:
 - databases.removeView({databaseId, viewId}) → void [databases.write] — Remove a view (a database keeps at least one).
 - databases.duplicateView({databaseId, viewId, name?}) → DatabaseViewInfo [databases.write] — Copy a view with all its settings.
 - databases.moveView({databaseId, viewId, index}) → void [databases.write] — Move a view to another position in the view tabs.
-- databases.updateProperty({databaseId, property, name?, type?, formula?, format?, dateFormat?, display?, options?}) → DatabaseSchemaInfo [databases.write] — Rename a property, change its type, formula, number/date format or select options.
+- databases.updateProperty({databaseId, property, name?, type?, formula?, format?, dateFormat?, display?, customType?, config?, options?}) → DatabaseSchemaInfo [databases.write] — Rename a property, change its type, formula, number/date format or select options.
 - databases.formulaFunctions({}) → string [databases.read] — The formula language: syntax and every function (math, text, style/link formatting, dates, lists, lambdas), one line each.
 - databases.checkFormula({databaseId, formula, property?}) → { ok: boolean; error?: string; resultType?: string; sample?: { title: string; value: unknown; error?: string }[] } [databases.read] — Check a formula against a database without saving: errors (with line/column and did-you-mean hints), result type and sample results.
 - databases.removeProperty({databaseId, property}) → void [databases.write] — Delete a property and its values from every row.
@@ -141,8 +141,9 @@ Rules for agents writing plugins:
 - ui.ask({question, options?, multiple?, allowText?, placeholder?}) → AskResult [ui.modal] — Ask the user a question with choices and/or a free-text answer, and wait for the reply.
 - ui.menu({items, x?, y?, anchor?, placement?, width?, filter?}) → string | null [ui.modal] — Open a menu (context menu or dropdown) and wait for the choice. Resolves to the chosen item id, or null when dismissed.
 - ui.showModal({html, title?, subtitle?, data?, width?, height?, dismissible?, bare?}) → unknown [ui.modal] — Open a modal dialog that renders your HTML, and wait until it closes. Resolves to the value passed to noteral.close(value) (or noteral.setData), or null when dismissed.
-- ui.popover({html, data?, x?, y?, anchor?, placement?, width?, height?}) → unknown [ui.modal] — Open a small floating panel with your HTML next to an element or point; it closes on outside click or Escape. Resolves to the value passed to noteral.close(value), or null.
-- ui.closePopups({}) → void [ui.modal] — Close every modal and popover you opened.
+- ui.popover({html, data?, x?, y?, anchor?, placement?, offset?, width?, height?, maxHeight?, name?, toggle?, bare?, persistent?, escape?}) → unknown [ui.modal] — Open a small floating panel with your HTML next to an element or point; it closes on outside click or Escape. Resolves to the value passed to noteral.close(value), or null.
+- ui.updatePopover({name, data?, html?, anchor?, placement?, width?, height?}) → boolean [ui.modal] — Change an open popover by name: new data (sent to the view as props, no reload), html, size or position. Returns false when it isn't open.
+- ui.closePopups({name?}) → void [ui.modal] — Close every modal and popover you opened, or only the popover with `name`.
 - ui.setStatus({itemId, text, title?}) → void [ui.status] — Show text in the status bar (declare the item in manifest.contributes.statusItems or by id).
 - ui.setPanel({panelId, title?, markdown, actions?}) → void [ui.panel] — Render a sidebar panel from Markdown, with optional action buttons.
 - ui.addStyles({css}) → void [ui.styles] — Add CSS for the plugin's own look (replaces the plugin's previous styles).
@@ -158,7 +159,15 @@ Rules for agents writing plugins:
 - sidebar.setLayout({groups, width?}) → SidebarInfo [layout] — Arrange the right sidebar: stacked groups of tabs, their order, sizes and active tabs.
 - sidebar.moveTab({id, group, index?}) → SidebarInfo [layout] — Move a tab to another group (or a new group) and position.
 - statusBar.list({}) → StatusWidgetInfo[] — List status bar widgets (built-in and custom).
-- statusBar.setWidget({id, text?, tooltip?, icon?, html?, width?, side?, order?, command?, layer?}) → StatusWidgetInfo [ui.status] — Add or update a status bar widget: text with an icon and click command, or a small HTML view.
+- statusBar.setWidget({id, text?, tooltip?, icon?, html?, width?, side?, order?, command?, minWidth?, maxWidth?, popup?, badge?, tone?, color?, background?, progress?, data?, layer?}) → StatusWidgetInfo [ui.status] — Add or replace a status bar widget: text with an icon, badge, colours and progress, or a small HTML view; a click runs a command or opens a popup next to it.
+- statusBar.updateWidget({id, text?, tooltip?, icon?, html?, width?, side?, order?, command?, minWidth?, maxWidth?, popup?, badge?, tone?, color?, background?, progress?, data?, layer?}) → unknown [ui.status] — Change some fields of one of your status widgets (text, badge, progress, data, popup…) without resending it; null removes a field.
+- ui.listOverlays({}) → unknown [ui.overlay] — List floating overlays (yours and others'), with owner, position and stack.
+- ui.setOverlay({id, html, title?, position?, x?, y?, width?, height?, interactive?, draggable?, chrome?, opacity?, stack?, hidden?, order?, data?, layer?}) → unknown [ui.overlay] — Create or replace a floating overlay: your HTML view pinned above the app (a HUD, timer, mini player, sticky note, toast area or full-screen effect).
+- ui.updateOverlay({id, html?, title?, position?, x?, y?, width?, height?, interactive?, draggable?, chrome?, opacity?, stack?, hidden?, order?, data?, layer?}) → unknown [ui.overlay] — Change some fields of one of your overlays (data, position, hidden, opacity…); null removes a field. A changed data reaches the view as props without reloading.
+- ui.removeOverlay({id, layer?}) → void [ui.overlay] — Remove one of your floating overlays.
+- databases.listPropertyTypes({}) → unknown [databases.read] — List the custom database property types plugins and layers registered (use one with type "custom" + customType).
+- databases.registerPropertyType({type, title?, icon?, description?, valueType?, render?, css?, editor?, editorWidth?, editorHeight?, config?, defaultValue?, align?, renderer?, layer?}) → unknown [databases.read] — Register a new database property type with its own cell look, editor and per-property options (ratings, progress, tags, colors, money, links…).
+- databases.unregisterPropertyType({type, layer?}) → void [databases.read] — Remove a property type you registered (existing values are kept and show as plain text).
 - statusBar.removeWidget({id, layer?}) → void [ui.status] — Remove a status bar widget.
 - statusBar.getLayout({}) → StatusBarLayoutInfo — The status bar layout in effect (separators, gap, height, per-item hidden/side/order/width) and every item with where it shows now.
 - statusBar.configure({separator?, gap?, height?, padding?, fontSize?, hidden?, items?, reset?, layer?}) → StatusBarLayoutInfo [ui.status] — Customize the whole status bar: hide/move/reorder/resize any item (built-in or custom), separators between items, gap, height, padding, text size, or hide the bar.
@@ -235,6 +244,7 @@ Rules for agents writing plugins:
 - ui.notify (low): Show toast notifications.
 - ui.panel (low): Add tabs to the right sidebar.
 - ui.modal (low): Ask you to confirm, type an answer or pick from a list.
+- ui.overlay (medium): Float its own views above the app (timers, HUDs, sticky notes, effects). They can cover what's underneath.
 - ui.styles (medium): Add CSS to the app (for the plugin's own look).
 - settings.read (low): Read the plugin's own saved settings.
 - settings.write (low): Save the plugin's own settings.
@@ -260,7 +270,7 @@ Rules for agents writing plugins:
 <!-- docs/plugins/README.md -->
 # Writing Noteral plugins
 
-Noteral plugins are small JavaScript bundles that run in a sandboxed iframe and talk to the app through a versioned API (**SDK 2.2.0**). A plugin can read and edit pages (blocks, text, formatting, the cursor and selection), query and reshape databases (views, filters, sorts, properties), add commands with keyboard shortcuts, sidebar tabs, status-bar widgets, editor blocks, page-tree item types and Home widgets, restyle the app, call the network (including a local server with `network.local`), keep private data in its own storage, add `@`-style suggestion menus to the editor, expose an API to other plugins, and react to page lifecycle events. It can do only what its manifest declares and the user approved.
+Noteral plugins are small JavaScript bundles that run in a sandboxed iframe and talk to the app through a versioned API (**SDK 2.3.0**). A plugin can read and edit pages (blocks, text, formatting, the cursor and selection), query and reshape databases (views, filters, sorts, properties), add commands with keyboard shortcuts, sidebar tabs, status-bar widgets, editor blocks, page-tree item types and Home widgets, restyle the app, call the network (including a local server with `network.local`), keep private data in its own storage, add `@`-style suggestion menus to the editor, expose an API to other plugins, and react to page lifecycle events. It can do only what its manifest declares and the user approved.
 
 - **[Manifest](manifest.md)**: every `manifest.json` field
 - **[Extending the interface](ui.md)**: sidebar tabs, status-bar widgets, custom blocks, custom page types, Home, appearance layers, testing
@@ -493,6 +503,77 @@ const running = await this.app.plugins.running(); // [{ id, name, version, metho
 
 Handlers run inside the exposing plugin, with its permissions, so only expose what any plugin may use; the caller's id is the second argument. Arguments and results are JSON. Calls fail when the target is not running or doesn't expose the method.
 
+## Status bar widgets and popups
+
+A widget can be text, an icon, a badge or a whole HTML view, and can open its own popup when clicked:
+
+```ts
+await this.app.statusBar.setWidget({
+  id: "pomodoro",
+  icon: "timer",
+  text: "25:00",
+  side: "right",
+  width: "auto",          // px, "auto" (fit content), "fill" (all free space) or "40%"
+  minWidth: 60,
+  tone: "accent",         // default | accent | success | warning | danger | muted
+  progress: 0.4,          // thin bar along the bottom, 0-1
+  badge: "3",
+  popup: {                // opens next to the widget on click (click again closes it)
+    html: `<h3>Focus</h3><button onclick="noteral.post('stop')">Stop</button>`,
+    width: 260,
+    placement: "top-end", // or bottom-*, left-*, right-*, *-center, center
+  },
+});
+// Cheap live updates (no reload of HTML views; they get props.data):
+setInterval(() => this.app.statusBar.updateWidget({ id: "pomodoro", text: clock(), progress: done() }), 1000);
+```
+
+Views can open popovers anywhere: `noteral.popover({ html, name, toggle: true, placement: "bottom-start", bare: true }, "self")` anchors one to the calling view; other anchors are an element or rect in the view, `"pointer"`, `"selection"`, `"status:<widgetId>"` or `"block:<blockId>"`. A `name` makes the popover a singleton (`toggle` closes it on a second call), `persistent` keeps it open on outside clicks, `ui.updatePopover` changes it in place and `ui.closePopups({ name })` closes it. Popovers opened from inside a popover stay open together, like submenus.
+
+## Floating overlays
+
+An overlay is an HTML view pinned above the whole app (a HUD, timer, mini player, sticky note or a full-window effect). It doesn't change the layout. It needs the `ui.overlay` permission:
+
+```ts
+const hud = this.addOverlay({
+  id: "now-playing",
+  html: `<div class="n-card" id="t"></div><script>noteral.on("props", (p) => t.textContent = p.data.title)</script>`,
+  position: "bottom-right", // corners, edges, center, or "full" (covers the window)
+  x: 16, y: 16,
+  width: 260,
+  draggable: true,          // a grip to move it (remembered; double-click resets)
+  chrome: true,             // card border and shadow
+  data: { title: "…" },
+});
+await hud.update({ data: { title: "Next song" } });
+```
+
+`interactive: false` lets clicks pass through (decoration, confetti, focus dimming). `stack: "top"` puts it above menus and dialogs too; use it sparingly. Overlays are removed when the plugin unloads, and the user can close one for the session from its grip.
+
+## Custom database property types
+
+Plugins can add property types to the database type picker, with their own cell look, editor and per-property options:
+
+```ts
+this.registerPropertyType({
+  type: "rating",
+  title: "Rating",
+  icon: "star",
+  valueType: "number", // how it sorts, filters, groups and calculates: text | number | checkbox | date
+  config: [{ key: "max", type: "slider", label: "Stars", min: 3, max: 10, default: 5 }],
+  render: `{{#repeat config.max}}<span data-value="{{@number}}" data-toggle
+    class="{{#if @number <= value}}on{{/if}}">★</span>{{/repeat}}`,
+  css: `span { color: var(--text-faint); padding: 0 1px } .on { color: var(--accent) }`,
+});
+```
+
+- **Templates**: `{{value}}`, `{{text}}`, `{{config.key}}`, `{{row.title}}`, `{{property.name}}`; filters such as `{{value | percent}}`, `fixed:1`, `number`, `date`, `upper`, `truncate:20`, `default:"—"`, `times:100`, `clamp01`, `join:", "`; blocks `{{#if value >= 3}}…{{else}}…{{/if}}`, `{{#unless empty}}`, `{{#each value}}{{this}}{{/each}}` and `{{#repeat n}}{{@number}}{{/repeat}}`. Everything printed is escaped. The HTML is sanitized (no script, event handlers, forms or remote images) and shown in a shadow root styled by `css`, where theme variables work.
+- **Clicks**: in a cell, an element with `data-value="<json>"` sets the value (stars, toggles, steppers, color swatches); add `data-toggle` to clear it when it's already the value. `data-edit` opens the editor.
+- **Editor**: `editor` is an HTML view shown in a popover by the cell. It gets `noteral.props` = `{ value, raw, config, property, row }`; `noteral.setData(v)` saves, `noteral.close(v)` saves and closes. Without one, the value type's own editor is used (text box, number, date picker; checkbox types toggle).
+- **Render in code**: pass a function as `render` to build the HTML in your plugin (`(ctx) => html`). It runs once per distinct value and config, and the result goes through the same sanitizer.
+- **Values**: a cell stores JSON. Store `{ value: 4, note: "…" }` to keep extra data next to the value that sorts and filters. Set values from code with `databases.addRow` / `updateRow` using the property's name. `databases.addProperty({ type: "custom", customType: "rating", config: { max: 10 } })` adds one.
+- If the plugin is turned off, its cells show their plain value and nothing is lost.
+
 ## Limits
 
 | What | Limit |
@@ -501,6 +582,7 @@ Handlers run inside the exposing plugin, with its permissions, so only expose wh
 | Calls in flight per plugin | 32; each times out after 60 s |
 | `onload` | 6 s; command handlers 30 s |
 | Commands / menu items / settings fields | 50 runtime commands, 24 menu items, 40 fields |
+| Status widgets / overlays / property types | 12 / 12 / 20 per plugin; templates 40,000 characters, 200 repeats, config 20 KB, a cell value 50 KB |
 | Block / node data | 200 KB / 1 MB per block or page |
 | HTML of one view | 400,000 characters |
 | `loadData` settings | 64 KB, 64 keys per save |
@@ -513,7 +595,7 @@ Handlers run inside the exposing plugin, with its permissions, so only expose wh
 Ask for the smallest set that works. The install screen lists each permission with its risk level, and an update that adds permissions asks again. The full vocabulary is in the [API reference](../sdk/api-reference.md#permissions); the common ones:
 
 - **Low**: `editor.read`, `navigation`, `layout`, `menus`, `ui.status`, `ui.notify`, `ui.panel`, `ui.modal`, `settings.read`, `settings.write`, `assets.read`, `assets.write`, `workspaces.read`
-- **Medium**: `editor.write`, `pages.read`, `databases.read`, `search.read`, `ui.styles`, `appearance`, `preferences`, `clipboard`
+- **Medium**: `editor.write`, `pages.read`, `databases.read`, `search.read`, `ui.styles`, `ui.overlay`, `appearance`, `preferences`, `clipboard`
 - **High**: `pages.write`, `databases.write`, `workspaces.write`, `commands.execute`, `network` (any HTTP request through the app, which can send data off the device), `network.local` (`network` plus localhost and the local network, e.g. Ollama on `http://127.0.0.1:11434`)
 
 ## Styling
@@ -1207,7 +1289,7 @@ Point coding agents at [`docs/sdk/llms.txt`](sdk/llms.txt) (index plus every met
 ---
 
 <!-- Generated by scripts/build-sdk.mjs from frontend/src/sdk-host/spec.ts. Do not edit. -->
-# App API reference (SDK 2.2.0)
+# App API reference (SDK 2.3.0)
 
 Every method below is callable from plugins as `this.app.<namespace>.<method>(params)` and,
 where marked, by the in-app assistant as a tool named `<namespace>_<method>`.
@@ -1890,7 +1972,7 @@ To put a database inside a page's content, use databases.embed instead. Property
 | --- | --- | --- | --- |
 | `title` | `string` | yes | Database title. |
 | `parentId` | `string` |  | Parent page/folder id. |
-| `properties` | `{ /** Property name. */ name: string; /** Property type. */ type: "text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited" \| "formula"; /** Options for select / multiSelect / status. */ options?: string[]; /** Formula source (type formula), e.g. {Price} * {Qty}, if({Done}, style("Done", "green"), fromNow({Due})) or formatNumber({Ratio}, "percent"). May span lines with // comments. Validated; see databases.formulaFunctions. */ formula?: string; /** Number format (number and formula properties). */ format?: "number" \| "commas" \| "percent" \| "dollar" \| "euro" \| "pound" \| "yen"; /** How date results of a formula show. */ dateFormat?: "relative" \| "short" \| "long" \| "iso"; /** How a number (or number-formula) property shows its value. Merged over the current display on updateProperty. */ display?: { /** number = plain text (clears the display); bar / ring = progress toward max; rating = stars; heat = tinted by size. */ style?: "number" \| "bar" \| "ring" \| "rating" \| "heat"; /** Fill colour; default = the app accent. */ color?: "default" \| "gray" \| "brown" \| "orange" \| "yellow" \| "green" \| "blue" \| "purple" \| "pink" \| "red"; /** The value that counts as full (bar/ring/heat; default 100, or 1 for percent format). For rating: the number of stars, 1–10 (default 5). */ max?: number; /** Bar / ring: also show the number (default true). */ showNumber?: boolean; }; }[]` |  | Columns besides the title. |
+| `properties` | `{ /** Property name. */ name: string; /** Property type. */ type: "text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited" \| "formula" \| "custom"; /** Options for select / multiSelect / status. */ options?: string[]; /** Formula source (type formula), e.g. {Price} * {Qty}, if({Done}, style("Done", "green"), fromNow({Due})) or formatNumber({Ratio}, "percent"). May span lines with // comments. Validated; see databases.formulaFunctions. */ formula?: string; /** Number format (number and formula properties). */ format?: "number" \| "commas" \| "percent" \| "dollar" \| "euro" \| "pound" \| "yen"; /** How date results of a formula show. */ dateFormat?: "relative" \| "short" \| "long" \| "iso"; /** How a number (or number-formula) property shows its value. Merged over the current display on updateProperty. */ display?: { /** number = plain text (clears the display); bar / ring = progress toward max; rating = stars; heat = tinted by size. */ style?: "number" \| "bar" \| "ring" \| "rating" \| "heat"; /** Fill colour; default = the app accent. */ color?: "default" \| "gray" \| "brown" \| "orange" \| "yellow" \| "green" \| "blue" \| "purple" \| "pink" \| "red"; /** The value that counts as full (bar/ring/heat; default 100, or 1 for percent format). For rating: the number of stars, 1–10 (default 5). */ max?: number; /** Bar / ring: also show the number (default true). */ showNumber?: boolean; }; /** For type custom: a registered property type id (databases.listPropertyTypes), e.g. "rating". */ customType?: string; /** For type custom: per-property options the type defines (its config fields), merged into the current ones; null for a key removes it. */ config?: unknown; }[]` |  | Columns besides the title. |
 | `view` | `"table" \| "board" \| "gallery" \| "list" \| "calendar" \| "chart" \| "custom"` |  | First view type. Default `"table"`. |
 | `open` | `boolean` |  | Open it in a tab. Default `true`. |
 
@@ -1907,7 +1989,7 @@ With databaseId the block links that database (it stays where it is). Without it
 | `pageId` | `string` |  | Page to insert into. Defaults to the page open in the focused pane. |
 | `databaseId` | `string` |  | Existing database to link. Omit to create a new inline database. |
 | `title` | `string` |  | New database title. |
-| `properties` | `{ /** Property name. */ name: string; /** Property type. */ type: "text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited" \| "formula"; /** Options for select / multiSelect / status. */ options?: string[]; /** Formula source (type formula), e.g. {Price} * {Qty}, if({Done}, style("Done", "green"), fromNow({Due})) or formatNumber({Ratio}, "percent"). May span lines with // comments. Validated; see databases.formulaFunctions. */ formula?: string; /** Number format (number and formula properties). */ format?: "number" \| "commas" \| "percent" \| "dollar" \| "euro" \| "pound" \| "yen"; /** How date results of a formula show. */ dateFormat?: "relative" \| "short" \| "long" \| "iso"; /** How a number (or number-formula) property shows its value. Merged over the current display on updateProperty. */ display?: { /** number = plain text (clears the display); bar / ring = progress toward max; rating = stars; heat = tinted by size. */ style?: "number" \| "bar" \| "ring" \| "rating" \| "heat"; /** Fill colour; default = the app accent. */ color?: "default" \| "gray" \| "brown" \| "orange" \| "yellow" \| "green" \| "blue" \| "purple" \| "pink" \| "red"; /** The value that counts as full (bar/ring/heat; default 100, or 1 for percent format). For rating: the number of stars, 1–10 (default 5). */ max?: number; /** Bar / ring: also show the number (default true). */ showNumber?: boolean; }; }[]` |  | Columns besides the title. |
+| `properties` | `{ /** Property name. */ name: string; /** Property type. */ type: "text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited" \| "formula" \| "custom"; /** Options for select / multiSelect / status. */ options?: string[]; /** Formula source (type formula), e.g. {Price} * {Qty}, if({Done}, style("Done", "green"), fromNow({Due})) or formatNumber({Ratio}, "percent"). May span lines with // comments. Validated; see databases.formulaFunctions. */ formula?: string; /** Number format (number and formula properties). */ format?: "number" \| "commas" \| "percent" \| "dollar" \| "euro" \| "pound" \| "yen"; /** How date results of a formula show. */ dateFormat?: "relative" \| "short" \| "long" \| "iso"; /** How a number (or number-formula) property shows its value. Merged over the current display on updateProperty. */ display?: { /** number = plain text (clears the display); bar / ring = progress toward max; rating = stars; heat = tinted by size. */ style?: "number" \| "bar" \| "ring" \| "rating" \| "heat"; /** Fill colour; default = the app accent. */ color?: "default" \| "gray" \| "brown" \| "orange" \| "yellow" \| "green" \| "blue" \| "purple" \| "pink" \| "red"; /** The value that counts as full (bar/ring/heat; default 100, or 1 for percent format). For rating: the number of stars, 1–10 (default 5). */ max?: number; /** Bar / ring: also show the number (default true). */ showNumber?: boolean; }; /** For type custom: a registered property type id (databases.listPropertyTypes), e.g. "rating". */ customType?: string; /** For type custom: per-property options the type defines (its config fields), merged into the current ones; null for a key removes it. */ config?: unknown; }[]` |  | Columns besides the title. |
 | `view` | `"table" \| "board" \| "gallery" \| "list" \| "calendar" \| "chart" \| "custom"` |  | First view type of a new database. Default `"table"`. |
 | `position` | `"start" \| "end" \| "before" \| "after"` |  | Where in the page. Default `"end"`. |
 | `blockId` | `string` |  | Anchor block for before/after. |
@@ -1927,12 +2009,14 @@ Add a property (column) to a database.
 | --- | --- | --- | --- |
 | `databaseId` | `string` | yes | Database id. |
 | `name` | `string` | yes | Property name. |
-| `type` | `"text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited" \| "formula"` | yes | Property type. |
+| `type` | `"text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited" \| "formula" \| "custom"` | yes | Property type. |
 | `options` | `string[]` |  | Options for select / multiSelect / status. |
 | `formula` | `string` |  | Formula source (type formula), e.g. {Price} * {Qty}, if({Done}, style("Done", "green"), fromNow({Due})) or formatNumber({Ratio}, "percent"). May span lines with // comments. Validated; see databases.formulaFunctions. |
 | `format` | `"number" \| "commas" \| "percent" \| "dollar" \| "euro" \| "pound" \| "yen"` |  | Number format (number and formula properties). |
 | `dateFormat` | `"relative" \| "short" \| "long" \| "iso"` |  | How date results of a formula show. |
 | `display` | `{ /** number = plain text (clears the display); bar / ring = progress toward max; rating = stars; heat = tinted by size. */ style?: "number" \| "bar" \| "ring" \| "rating" \| "heat"; /** Fill colour; default = the app accent. */ color?: "default" \| "gray" \| "brown" \| "orange" \| "yellow" \| "green" \| "blue" \| "purple" \| "pink" \| "red"; /** The value that counts as full (bar/ring/heat; default 100, or 1 for percent format). For rating: the number of stars, 1–10 (default 5). */ max?: number; /** Bar / ring: also show the number (default true). */ showNumber?: boolean; }` |  | How a number (or number-formula) property shows its value. Merged over the current display on updateProperty. |
+| `customType` | `string` |  | For type custom: a registered property type id (databases.listPropertyTypes), e.g. "rating". |
+| `config` | `unknown` |  | For type custom: per-property options the type defines (its config fields), merged into the current ones; null for a key removes it. |
 
 ### `databases.addRow`
 
@@ -2150,11 +2234,13 @@ Rename a property, change its type, formula, number/date format or select option
 | `databaseId` | `string` | yes | Database id. |
 | `property` | `string` | yes | Property name or id ("title" or the title column's name for the title). |
 | `name` | `string` |  | New name. |
-| `type` | `"text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited" \| "formula"` |  | New type. |
+| `type` | `"text" \| "number" \| "select" \| "multiSelect" \| "status" \| "date" \| "checkbox" \| "url" \| "email" \| "phone" \| "createdTime" \| "lastEdited" \| "formula" \| "custom"` |  | New type. |
 | `formula` | `string` |  | Formula source (type formula), e.g. {Price} * {Qty}, if({Done}, style("Done", "green"), fromNow({Due})) or formatNumber({Ratio}, "percent"). May span lines with // comments. Validated; see databases.formulaFunctions. |
 | `format` | `"number" \| "commas" \| "percent" \| "dollar" \| "euro" \| "pound" \| "yen"` |  | Number format (number and formula properties). |
 | `dateFormat` | `"relative" \| "short" \| "long" \| "iso"` |  | How date results of a formula show. |
 | `display` | `{ /** number = plain text (clears the display); bar / ring = progress toward max; rating = stars; heat = tinted by size. */ style?: "number" \| "bar" \| "ring" \| "rating" \| "heat"; /** Fill colour; default = the app accent. */ color?: "default" \| "gray" \| "brown" \| "orange" \| "yellow" \| "green" \| "blue" \| "purple" \| "pink" \| "red"; /** The value that counts as full (bar/ring/heat; default 100, or 1 for percent format). For rating: the number of stars, 1–10 (default 5). */ max?: number; /** Bar / ring: also show the number (default true). */ showNumber?: boolean; }` |  | How a number (or number-formula) property shows its value. Merged over the current display on updateProperty. |
+| `customType` | `string` |  | For type custom: a registered property type id (databases.listPropertyTypes), e.g. "rating". |
+| `config` | `unknown` |  | For type custom: per-property options the type defines (its config fields), merged into the current ones; null for a key removes it. |
 | `options` | `{ /** Option name. */ name: string; /** Color name. */ color?: "default" \| "gray" \| "brown" \| "orange" \| "yellow" \| "green" \| "blue" \| "purple" \| "pink" \| "red"; /** Status group. */ group?: "todo" \| "inProgress" \| "complete"; }[]` |  | Options (select / multi-select / status). |
 
 ### `databases.formulaFunctions`
@@ -2220,6 +2306,51 @@ Rename a database or its title column.
 | `databaseId` | `string` | yes | Database id. |
 | `title` | `string` |  | New database title. |
 | `titleColumn` | `string` |  | New name of the title column. |
+
+### `databases.listPropertyTypes`
+
+List the custom database property types plugins and layers registered (use one with type "custom" + customType).
+
+**Permission:** `databases.read` · **Returns:** `unknown` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+No parameters.
+
+### `databases.registerPropertyType`
+
+Register a new database property type with its own cell look, editor and per-property options (ratings, progress, tags, colors, money, links…).
+
+valueType (text, number, checkbox, date) decides how values sort, filter, group and calculate. render is a cell template: {{value}}, {{text}}, {{config.key}}, {{row.title}}, filters {{value | percent}} (upper, lower, fixed:n, round:n, number, date, default:x, truncate:n, times:n, divide:n, plus:n, minus:n, min:n, max:n, clamp01, join:", ", length, json), blocks {{#if value >= 3}}…{{else}}…{{/if}}, {{#unless empty}}, {{#each value}}{{this}}{{/each}}, {{#repeat config.max}}{{@number}}{{/repeat}}. Output is escaped and sanitized (no script, no remote loads) and shown in a shadow root styled by css (theme variables like var(--accent) work). In a cell, clicking an element with data-value="json" sets the value (add data-toggle to clear it when it's already set); data-edit opens the editor. editor is an HTML view in a popover: props { value, raw, config, property, row }; noteral.setData(v) saves, noteral.close(v?) saves (if given) and closes. Without editor, the value type's built-in editor is used. config fields (like plugin settings: toggle, text, number, slider, select, color…) appear in the property's menu. SDK plugins can render cells in their worker instead (registerPropertyType({ render: (ctx) => html })).
+
+**Permission:** `databases.read` · **Returns:** `unknown` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `type` | `string` | yes | Type id stored in databases — keep it stable (lowercase letters, digits, dots, dashes, underscores). |
+| `title` | `string` |  | Name in the type picker. |
+| `icon` | `string` |  | Icon: an emoji or a Lucide icon name such as "chart-line". |
+| `description` | `string` |  | Shown in the type picker. |
+| `valueType` | `"text" \| "number" \| "checkbox" \| "date"` |  | How values behave. Default `"text"`. |
+| `render` | `string` |  | Cell template (see details). |
+| `css` | `string` |  | CSS for cells (scoped to the cell's shadow root). |
+| `editor` | `string` |  | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `editorWidth` | `number` |  | Editor popover width in px. |
+| `editorHeight` | `number` |  | Editor's initial height in px. |
+| `config` | `unknown[]` |  | Per-property options: { key, type (toggle, text, textarea, number, slider, select, color), label, description?, default?, options?, min?, max?, step? }. |
+| `defaultValue` | `unknown` |  | Value shown for rows that have none. |
+| `align` | `"start" \| "center" \| "end"` |  | Cell alignment. |
+| `renderer` | `boolean` |  | The plugin renders cells itself (set by the SDK when render is a function). Default `false`. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `databases.unregisterPropertyType`
+
+Remove a property type you registered (existing values are kept and show as plain text).
+
+**Permission:** `databases.read` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `type` | `string` | yes | Type id. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
 
 ## workspaces
 
@@ -2780,8 +2911,8 @@ Items can have icons (emoji or Lucide names), hints (shortcuts), descriptions, c
 | `items` | `unknown[]` | yes | Menu items. |
 | `x` | `number` |  | Open at this x (window, or frame coordinates from a view). |
 | `y` | `number` |  | Open at this y. |
-| `anchor` | `{ /** Left. */ x: number; /** Top. */ y: number; /** Width. */ width?: number; /** Height. */ height?: number; }` |  | Rect to open next to (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element). |
-| `placement` | `"bottom-start" \| "bottom-end" \| "top-start" \| "top-end" \| "right-start" \| "left-start"` |  | Where to open relative to the anchor. |
+| `anchor` | `unknown` |  | What to open next to: a rect { x, y, width?, height? } (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element), or a name: "self" (the calling view's frame), "status:<widget id>" (your status widget), "block:<block id>", "selection" or "pointer". |
+| `placement` | `"bottom-start" \| "bottom-end" \| "bottom-center" \| "top-start" \| "top-end" \| "top-center" \| "right-start" \| "right-end" \| "right-center" \| "left-start" \| "left-end" \| "left-center" \| "center"` |  | Where to open relative to the anchor ("center" = middle of the window). |
 | `width` | `number` |  | Menu width in px. |
 | `filter` | `boolean` |  | Show a filter box above the items (long lists). Default `false`. |
 
@@ -2816,6 +2947,8 @@ const result = await noteral.modal({ title: "Pick a color", width: 360, html: '<
 
 Open a small floating panel with your HTML next to an element or point; it closes on outside click or Escape. Resolves to the value passed to noteral.close(value), or null.
 
+A popover opened from inside another popover keeps its parent open. Opening one closes your other non-persistent popovers. Plugin code without a view can anchor to "status:<widget id>" or the `anchor` a status command receives.
+
 **Permission:** `ui.modal` · **Returns:** `unknown` · **Callers:** plugins
 
 | Param | Type | Required | Notes |
@@ -2824,22 +2957,47 @@ Open a small floating panel with your HTML next to an element or point; it close
 | `data` | `unknown` |  | JSON passed to the view as noteral.props.data. |
 | `x` | `number` |  | Open at this x. |
 | `y` | `number` |  | Open at this y. |
-| `anchor` | `{ /** Left. */ x: number; /** Top. */ y: number; /** Width. */ width?: number; /** Height. */ height?: number; }` |  | Rect to open next to (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element). |
-| `placement` | `"bottom-start" \| "bottom-end" \| "top-start" \| "top-end" \| "right-start" \| "left-start"` |  | Where to open relative to the anchor. |
+| `anchor` | `unknown` |  | What to open next to: a rect { x, y, width?, height? } (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element), or a name: "self" (the calling view's frame), "status:<widget id>" (your status widget), "block:<block id>", "selection" or "pointer". |
+| `placement` | `"bottom-start" \| "bottom-end" \| "bottom-center" \| "top-start" \| "top-end" \| "top-center" \| "right-start" \| "right-end" \| "right-center" \| "left-start" \| "left-end" \| "left-center" \| "center"` |  | Where to open relative to the anchor ("center" = middle of the window). |
+| `offset` | `number` |  | Gap to the anchor in px (default 4). |
 | `width` | `number` |  | Width in px (default 300). |
 | `height` | `number` |  | Fixed height in px; omit to grow with the content. |
+| `maxHeight` | `number` |  | Cap for a growing popover (default 70% of the window). |
+| `name` | `string` |  | Your name for it: opening the same name again replaces it, and ui.updatePopover / ui.closePopups can target it. |
+| `toggle` | `boolean` |  | With a name: close it instead if it is already open (a status widget's click). |
+| `bare` | `boolean` |  | No background, border, radius or shadow — your HTML paints the whole panel (transparent popovers, custom shapes). |
+| `persistent` | `boolean` |  | Outside clicks don't close it (Escape, noteral.close or a toggle do). |
+| `escape` | `boolean` |  | Escape closes it (default true). |
 
 ```ts
-button.onclick = () => noteral.popover({ html: "<p>Details…</p>", width: 260 }, button);
+button.onclick = () => noteral.popover({ html: "<p>Details…</p>", width: 260, name: "details", toggle: true }, button);
 ```
+
+### `ui.updatePopover`
+
+Change an open popover by name: new data (sent to the view as props, no reload), html, size or position. Returns false when it isn't open.
+
+**Permission:** `ui.modal` · **Returns:** `boolean` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `name` | `string` | yes | The name it was opened with. |
+| `data` | `unknown` |  | New noteral.props.data. |
+| `html` | `string` |  | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `anchor` | `unknown` |  | What to open next to: a rect { x, y, width?, height? } (window coordinates, or frame coordinates from a view — noteral.menu/popover fill it from an element), or a name: "self" (the calling view's frame), "status:<widget id>" (your status widget), "block:<block id>", "selection" or "pointer". |
+| `placement` | `"bottom-start" \| "bottom-end" \| "bottom-center" \| "top-start" \| "top-end" \| "top-center" \| "right-start" \| "right-end" \| "right-center" \| "left-start" \| "left-end" \| "left-center" \| "center"` |  | Where to open relative to the anchor ("center" = middle of the window). |
+| `width` | `number` |  | Width in px. |
+| `height` | `number` |  | Height in px. |
 
 ### `ui.closePopups`
 
-Close every modal and popover you opened.
+Close every modal and popover you opened, or only the popover with `name`.
 
 **Permission:** `ui.modal` · **Returns:** `void` · **Callers:** plugins
 
-No parameters.
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `name` | `string` |  | Only this named popover. |
 
 ### `ui.setStatus`
 
@@ -2877,6 +3035,79 @@ Add CSS for the plugin's own look (replaces the plugin's previous styles).
 | Param | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `css` | `string` | yes | CSS. |
+
+### `ui.listOverlays`
+
+List floating overlays (yours and others'), with owner, position and stack.
+
+**Permission:** `ui.overlay` · **Returns:** `unknown` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+No parameters.
+
+### `ui.setOverlay`
+
+Create or replace a floating overlay: your HTML view pinned above the app (a HUD, timer, mini player, sticky note, toast area or full-screen effect).
+
+Overlays sit in a layer over every pane and don't move the layout. position picks a corner/edge/center or "full" (covers the window); x/y offset from it. interactive:false lets clicks pass through (pure decoration/visual effects). draggable adds a grip the user drags (remembered; double-click the grip resets). chrome adds the app's card border and shadow. stack "top" puts it above menus and dialogs too (use sparingly). The view gets props.data and the overlay's own id; ui.updateOverlay changes fields without reloading the view.
+
+**Permission:** `ui.overlay` · **Returns:** `unknown` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Overlay id (letters, digits, dots, dashes, underscores). |
+| `html` | `string` | yes | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `title` | `string` |  | Name shown on the drag grip and to screen readers. |
+| `position` | `"top-left" \| "top" \| "top-right" \| "left" \| "center" \| "right" \| "bottom-left" \| "bottom" \| "bottom-right" \| "full"` |  | Where it's pinned. Default `"bottom-right"`. |
+| `x` | `number` |  | Horizontal offset in px from the position (positive moves inward). |
+| `y` | `number` |  | Vertical offset in px from the position (positive moves inward). |
+| `width` | `unknown` |  | Width: px (8-8000) or "NN%" of the window. Default 280 (full: 100%). |
+| `height` | `unknown` |  | Height: px, "NN%" of the window, or "auto" (default: fits the content). |
+| `interactive` | `boolean` |  | false: clicks pass through to the app underneath. Default `true`. |
+| `draggable` | `boolean` |  | Show a grip so the user can move it. Default `false`. |
+| `chrome` | `boolean` |  | Card border, background and shadow around the view. Default `false`. |
+| `opacity` | `number` |  | Opacity 0.05-1. |
+| `stack` | `"app" \| "top"` |  | app (default): above the app, below menus/popovers/dialogs. top: above everything. |
+| `hidden` | `boolean` |  | Keep it registered but hidden. Default `false`. |
+| `order` | `number` |  | Stacking order among overlays (higher on top). |
+| `data` | `unknown` |  | Passed to the view as noteral.props.data. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `ui.updateOverlay`
+
+Change some fields of one of your overlays (data, position, hidden, opacity…); null removes a field. A changed data reaches the view as props without reloading.
+
+**Permission:** `ui.overlay` · **Returns:** `unknown` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Overlay id. |
+| `html` | `string` |  | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `title` | `string` |  | Title. |
+| `position` | `"top-left" \| "top" \| "top-right" \| "left" \| "center" \| "right" \| "bottom-left" \| "bottom" \| "bottom-right" \| "full"` |  | Position. |
+| `x` | `number` |  | X offset. |
+| `y` | `number` |  | Y offset. |
+| `width` | `unknown` |  | Width (px or NN%). |
+| `height` | `unknown` |  | Height (px, NN% or auto). |
+| `interactive` | `boolean` |  | Clickable. |
+| `draggable` | `boolean` |  | Draggable. |
+| `chrome` | `boolean` |  | Card chrome. |
+| `opacity` | `number` |  | Opacity. |
+| `stack` | `"app" \| "top"` |  | Stack. |
+| `hidden` | `boolean` |  | Hidden. |
+| `order` | `number` |  | Order. |
+| `data` | `unknown` |  | New props.data. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `ui.removeOverlay`
+
+Remove one of your floating overlays.
+
+**Permission:** `ui.overlay` · **Returns:** `void` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Overlay id. |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
 
 ## clipboard
 
@@ -3036,9 +3267,9 @@ No parameters.
 
 ### `statusBar.setWidget`
 
-Add or update a status bar widget: text with an icon and click command, or a small HTML view.
+Add or replace a status bar widget: text with an icon, badge, colours and progress, or a small HTML view; a click runs a command or opens a popup next to it.
 
-HTML widgets render in a 22px-high sandboxed frame (`width` px wide) and can call the App API with the owner's permissions.
+HTML widgets render in a 22px-high sandboxed frame and can call the App API with the owner's permissions; width "auto" fits their content, "fill" or "100%" takes all the free space of the bar (the other side shrinks to its content). `popup` opens your HTML in a popover anchored to the widget (a second click closes it). Plugin commands run from a widget get { source: "status", widget, anchor } as their argument. Use statusBar.updateWidget for live values.
 
 **Permission:** `ui.status` · **Returns:** `StatusWidgetInfo` · **Callers:** plugins, assistant · **Assistant modes:** Creator
 
@@ -3053,6 +3284,45 @@ HTML widgets render in a 22px-high sandboxed frame (`width` px wide) and can cal
 | `side` | `"left" \| "center" \| "right"` |  | Side. Default `"right"`. |
 | `order` | `number` |  | Order (lower first). Default `0`. |
 | `command` | `string` |  | Command id to run on click (see commands.list). |
+| `minWidth` | `number` |  | Minimum width in px. |
+| `maxWidth` | `number` |  | Maximum width in px. |
+| `popup` | `unknown` |  | Popover opened by a click, anchored to the widget: { html, width?, height?, placement?, bare?, persistent?, data? } (or just the html string). Default placement opens upwards, aligned to the widget's side. |
+| `badge` | `unknown` |  | Small pill after the text: a count or short label (max 24 chars). |
+| `tone` | `"default" \| "muted" \| "accent" \| "success" \| "warning" \| "danger"` |  | Colour preset. |
+| `color` | `string` |  | Text colour: hex, rgb()/hsl(), var(--token) or a CSS colour name. |
+| `background` | `string` |  | Background colour (same forms as color). |
+| `progress` | `number` |  | 0–1: a thin progress bar along the widget's bottom edge. |
+| `data` | `unknown` |  | JSON for HTML widgets as noteral.props.data (changes arrive without reloading). |
+| `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
+
+### `statusBar.updateWidget`
+
+Change some fields of one of your status widgets (text, badge, progress, data, popup…) without resending it; null removes a field.
+
+Cheap enough for live values (timers, counters, sync progress). HTML widgets receive a changed `data` as noteral.props.data without reloading.
+
+**Permission:** `ui.status` · **Returns:** `unknown` · **Callers:** plugins, assistant · **Assistant modes:** Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Widget id. |
+| `text` | `string` |  | Text. |
+| `tooltip` | `string` |  | Tooltip. |
+| `icon` | `string` |  | Icon: an emoji or a Lucide icon name such as "chart-line". |
+| `html` | `string` |  | HTML for a sandboxed view (a fragment or a full document; inline <style> and <script> are fine, no remote scripts). The script gets a global `noteral` (props, setData, call, on, open, notify — see the View API guide). Theme tokens are available as CSS variables, and the kit classes n-btn, n-input, n-card, n-row, n-col, n-grid, n-chip, n-list, n-muted are predefined. |
+| `width` | `unknown` |  | Width: px (16-1200), "auto" (fit content), "fill" (take the free space) or "NN%" of the bar. HTML widgets default to 120px. |
+| `side` | `"left" \| "center" \| "right"` |  | Side. |
+| `order` | `number` |  | Order (lower first). |
+| `command` | `string` |  | Command id to run on click. |
+| `minWidth` | `number` |  | Minimum width in px. |
+| `maxWidth` | `number` |  | Maximum width in px. |
+| `popup` | `unknown` |  | Popover opened by a click, anchored to the widget: { html, width?, height?, placement?, bare?, persistent?, data? } (or just the html string). Default placement opens upwards, aligned to the widget's side. |
+| `badge` | `unknown` |  | Small pill after the text: a count or short label (max 24 chars). |
+| `tone` | `"default" \| "muted" \| "accent" \| "success" \| "warning" \| "danger"` |  | Colour preset. |
+| `color` | `string` |  | Text colour: hex, rgb()/hsl(), var(--token) or a CSS colour name. |
+| `background` | `string` |  | Background colour (same forms as color). |
+| `progress` | `number` |  | 0–1: a thin progress bar along the widget's bottom edge. |
+| `data` | `unknown` |  | JSON for HTML widgets as noteral.props.data (changes arrive without reloading). |
 | `layer` | `string` |  | Customization layer to write to. Assistant: defaults to this chat's layer (so the user can switch it off). Plugins: defaults to the plugin's own layer. "base" writes the base look. |
 
 ### `statusBar.removeWidget`
@@ -3815,6 +4085,7 @@ Subscribe with `this.registerEvent(name, handler)`. Events are only computed whi
 | `ui.notify` | low | **Notifications.** Show toast notifications. |
 | `ui.panel` | low | **Sidebar tabs.** Add tabs to the right sidebar. |
 | `ui.modal` | low | **Dialogs.** Ask you to confirm, type an answer or pick from a list. |
+| `ui.overlay` | medium | **Floating overlays.** Float its own views above the app (timers, HUDs, sticky notes, effects). They can cover what's underneath. |
 | `ui.styles` | medium | **Plugin styles.** Add CSS to the app (for the plugin's own look). |
 | `settings.read` | low | **Read its settings.** Read the plugin's own saved settings. |
 | `settings.write` | low | **Save its settings.** Save the plugin's own settings. |
@@ -4584,7 +4855,7 @@ export interface PluginTestResult {
   error?: string;
   logs: { level: string; message: string }[];
   commands: string[];
-  contributions: { sidebarTabs: string[]; statusWidgets: string[]; blockTypes: string[]; nodeTypes: string[]; menuItems: string[]; settings: string[]; panels: string[]; statusItems: string[] };
+  contributions: { sidebarTabs: string[]; statusWidgets: string[]; blockTypes: string[]; nodeTypes: string[]; menuItems: string[]; settings: string[]; overlays: string[]; propertyTypes: string[]; panels: string[]; statusItems: string[] };
   /** App API methods the code called. */
   calls: string[];
   /** Write calls that were skipped during the test. */
@@ -4659,6 +4930,78 @@ export interface SuggestContext {
   trigger: string;
   pageId: string | null;
   blockId: string | null;
+}
+
+/** What a custom property type's template, renderer function and editor view receive. */
+export interface PropertyCellContext {
+  /** The cell's value (for stored `{ value, ... }` objects, their `value`). */
+  value: unknown;
+  /** The stored value as is. */
+  raw: unknown;
+  /** Plain-text form of the value. */
+  text: string;
+  empty: boolean;
+  /** The property's options (the type's config fields, defaults filled in). */
+  config: Record<string, unknown>;
+  property: { id: string; name: string; type: string };
+  row: { id: string; title: string };
+  /** Shown in a card or list (less room). */
+  compact: boolean;
+}
+
+/** A config field of a custom property type, edited in the property's menu. */
+export interface PropertyConfigField {
+  key: string;
+  type: "toggle" | "text" | "textarea" | "number" | "slider" | "select" | "color";
+  label: string;
+  description?: string;
+  default?: unknown;
+  options?: { value: string; label: string }[];
+  min?: number;
+  max?: number;
+  step?: number;
+  placeholder?: string;
+}
+
+/** this.registerPropertyType(...) in the SDK. */
+export interface PropertyTypeDefinition {
+  /** Stored in databases: keep it stable. */
+  type: string;
+  title?: string;
+  icon?: string;
+  description?: string;
+  /** How values sort, filter, group and calculate. Default "text". */
+  valueType?: "text" | "number" | "checkbox" | "date";
+  /** A cell template string, or a function (runs in the plugin) returning the cell's HTML. */
+  render?: string | ((context: PropertyCellContext) => string | Promise<string>);
+  css?: string;
+  /** HTML view to edit a value in a popover (props: PropertyCellContext). */
+  editor?: string;
+  editorWidth?: number;
+  editorHeight?: number;
+  config?: PropertyConfigField[];
+  defaultValue?: unknown;
+  align?: "start" | "center" | "end";
+}
+
+/** this.addOverlay(...) in the SDK / ui.setOverlay. */
+export interface OverlayDefinition {
+  id: string;
+  html: string;
+  title?: string;
+  position?: "top-left" | "top" | "top-right" | "left" | "center" | "right" | "bottom-left" | "bottom" | "bottom-right" | "full";
+  x?: number;
+  y?: number;
+  width?: number | string;
+  height?: number | string;
+  interactive?: boolean;
+  draggable?: boolean;
+  chrome?: boolean;
+  opacity?: number;
+  stack?: "app" | "top";
+  hidden?: boolean;
+  order?: number;
+  data?: unknown;
 }
 
 /** Payload of page:created, page:deleted (and the base of page:renamed / page:moved). */
