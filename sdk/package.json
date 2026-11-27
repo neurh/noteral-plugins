@@ -1,6 +1,6 @@
 {
   "name": "@noteral/sdk",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Versioned TypeScript SDK for sandboxed Noteral plugins",
   "type": "module",
   "types": "src/index.ts",

@@ -1,6 +1,6 @@
 # Noteral plugin SDK
 
-> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.1.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
+> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.2.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
 
 Rules for agents writing plugins:
 - Extend `Plugin`, put setup in `onload()`, and finish main.js with `register(MyPlugin)`. Use `this.addCommand`, `this.registerEvent`, `this.registerInterval` so cleanup is automatic.
@@ -150,7 +150,7 @@ Rules for agents writing plugins:
 - clipboard.writeText({text}) → void [clipboard] — Copy text to the clipboard.
 - web.search({query, limit?}) → WebSearchResult [network] — Search the web (free, no API key). Returns titles, URLs and snippets.
 - web.fetch({url, maxChars?}) → WebPage [network] — Fetch a web page and return its readable text, title and links.
-- network.request({url, method?, headers?, body?}) → HttpResponse [network] — Make an HTTP request (any method, headers and body) through the app.
+- network.request({url, method?, headers?, body?, bodyEncoding?, timeoutMs?}) → HttpResponse [network] — Make an HTTP request (any method, headers and body) through the app.
 - sidebar.list({}) → SidebarInfo — List the right sidebar's tab groups (stacked panels) and every available tab.
 - sidebar.setTab({id, title, icon?, markdown?, actions?, html?, open?, split?, layer?}) → SidebarTabInfo [ui.panel] — Add or update a right-sidebar tab with Markdown (+ buttons) or a full HTML view.
 - sidebar.removeTab({id, layer?}) → void [ui.panel] — Remove a tab added with sidebar.setTab.
@@ -190,6 +190,18 @@ Rules for agents writing plugins:
 - home.updateWidget({viewId, widgetId, type?, x?, y?, w?, h?, title?, hideTitle?, style?, tint?, variant?, text?, limit?, pageId?, pageIds?, url?, date?, html?, css?, data?}) → HomeWidgetInfo [home] — Change a Home widget (position, size, style, content).
 - home.removeWidget({viewId, widgetId}) → void [home] — Remove a Home widget.
 - views.post({name, payload?, view?}) → { delivered: number } — Send a message to the plugin's HTML views (tabs, widgets, blocks, pages); they receive it with noteral.onMessage.
+- storage.get({key, scope?}) → unknown — Read a value from the plugin's private storage. Returns null when the key is missing.
+- storage.set({key, value?, scope?}) → void — Write a JSON value to the plugin's private storage. null deletes the key.
+- storage.delete({key, scope?}) → void — Remove a key from the plugin's private storage.
+- storage.list({prefix?, scope?}) → StorageEntryInfo[] — List the plugin's storage keys, optionally under a prefix.
+- storage.clear({prefix?, scope?}) → number — Delete every key (or every key under a prefix) in one scope. Returns how many were removed.
+- storage.usage({}) → StorageUsageInfo — How many keys and bytes the plugin stores across all scopes, and its quota.
+- runtime.readFile({path, encoding?}) → string — Read a file shipped in the plugin's bundle (templates, JSON data, wasm, fonts…).
+- editor.registerSuggester({id, trigger, minChars?, maxItems?, onSelect?}) → void [editor.read] — Open a menu of your items when the user types a trigger character in a page (like @ mentions or [[ links).
+- editor.unregisterSuggester({id}) → void [editor.read] — Remove one of the plugin's suggesters.
+- plugins.expose({methods}) → void — Publish methods other plugins can call with plugins.call.
+- plugins.running({}) → PluginApiInfo[] — List running plugins and the methods each one exposes.
+- plugins.call({plugin, method, args?, timeoutMs?}) → unknown — Call a method another running plugin exposed.
 
 ## Events
 
@@ -199,9 +211,14 @@ Rules for agents writing plugins:
 - workspace:opened: WorkspaceInfo — A workspace was opened.
 - selection:changed: EditorSelection & { pageId: string } — The cursor or selection moved in the open page (debounced).
 - layout:changed: LayoutInfo — Panes, tabs, sidebars or their tabs changed (debounced).
-- pages:changed: { count: number } — Pages were created, renamed, moved or trashed.
+- pages:changed: { count: number; created: string[]; renamed: string[]; moved: string[]; deleted: string[] } — Pages were created, renamed, moved or trashed (one summary per batch; see page:created and friends for details).
 - panel:action: { panelId: string; actionId: string } — A button in one of the plugin's panels or Markdown tabs was pressed.
 - settings:changed: { options: Record<string, unknown>; changed: string[] } — The user changed the plugin's options.
+- page:created: PageEventInfo — A page, folder, database or custom node was created.
+- page:renamed: PageEventInfo & { previousTitle: string } — A page's title changed.
+- page:moved: PageEventInfo & { previousParentId: string | null } — A page moved to another parent.
+- page:deleted: PageEventInfo — A page was moved to the trash.
+- page:saved: { pageId: string; title: string } — A page's content was saved (any page, not only the open one; debounced per page).
 - view:message: { view: string; name: string; payload: unknown } — One of the plugin's HTML views called noteral.post(name, payload).
 
 ## Permissions
@@ -231,6 +248,7 @@ Rules for agents writing plugins:
 - commands.execute (high): Run any command from the command palette.
 - clipboard (medium): Read and write the clipboard.
 - network (high): Make web requests, search the web and fetch pages.
+- network.local (high): Everything Internet access allows, plus servers on this computer and your local network (for example a local AI model).
 - blocks (low): Add new kinds of blocks to the editor (rendered in a sandbox).
 - nodes (low): Add new kinds of items to the page tree (rendered in a sandbox).
 - home (medium): Create, change and remove Home views and widgets.
@@ -242,7 +260,7 @@ Rules for agents writing plugins:
 <!-- docs/plugins/README.md -->
 # Writing Noteral plugins
 
-Noteral plugins are small JavaScript bundles that run in a sandboxed iframe and talk to the app through a versioned API (**SDK 2.1.0**). A plugin can read and edit pages (blocks, text, formatting, the cursor and selection), query and reshape databases (views, filters, sorts, properties), add commands with keyboard shortcuts, sidebar tabs, status-bar widgets, editor blocks, page-tree item types and Home widgets, restyle the app, call the network, and react to events. It can do only what its manifest declares and the user approved.
+Noteral plugins are small JavaScript bundles that run in a sandboxed iframe and talk to the app through a versioned API (**SDK 2.2.0**). A plugin can read and edit pages (blocks, text, formatting, the cursor and selection), query and reshape databases (views, filters, sorts, properties), add commands with keyboard shortcuts, sidebar tabs, status-bar widgets, editor blocks, page-tree item types and Home widgets, restyle the app, call the network (including a local server with `network.local`), keep private data in its own storage, add `@`-style suggestion menus to the editor, expose an API to other plugins, and react to page lifecycle events. It can do only what its manifest declares and the user approved.
 
 - **[Manifest](manifest.md)**: every `manifest.json` field
 - **[Extending the interface](ui.md)**: sidebar tabs, status-bar widgets, custom blocks, custom page types, Home, appearance layers, testing
@@ -346,7 +364,11 @@ Extend `Plugin`, do your setup in `onload()`, and end the file with `register(Yo
 | `onViewMessage(handler)` | Called with `(name, payload, view)` when one of your [HTML views](ui.md) calls `noteral.post`. | – |
 | `addStyles(css)` | Injects CSS into the app. It is removed on unload. | `ui.styles` |
 | `notify(message, kind?)` | Shows a toast (`info`, `success`, `error`). | `ui.notify` |
-| `loadData()` / `saveData(patch)` | Per-plugin JSON storage on disk. | `settings.read` / `settings.write` |
+| `loadData()` / `saveData(patch)` | Small settings object (≤ 64 KB) shared by all workspaces. | `settings.read` / `settings.write` |
+| `storage.get/set/delete/list/clear/usage` | Private key/value storage for larger data: any JSON up to 8 MB per key, 64 MB per plugin, per workspace or global. See [Storage](#storage). | – |
+| `readFile(path, encoding?)` | Reads a file you shipped in the bundle (`"text"` or `"base64"`). | – |
+| `registerSuggester({ id, trigger }, getItems, onSelect?)` | An inline menu when the user types `trigger` (`@`, `#`, `[`…) in a page. See [Suggesters](#suggesters). | `editor.read` |
+| `exposeApi({ name: handler })` / `callPlugin(id, method, args)` | Let other plugins call you, or call them. See [Plugins working together](#plugins-working-together). | – |
 
 Status items and panels you want to show must also be declared under `contributes` in the manifest, so the user sees them in the review screen. Commands can be static (`contributes.commands`) or dynamic (`addCommand`). If both use the same id, `addCommand` supplies the handler.
 
@@ -365,7 +387,7 @@ const { id } = await this.app.pages.create({ title: "Retro", markdown: "# Retro"
 await this.app.databases.addRow({ databaseId, values: { Status: "Doing" } });
 ```
 
-Every method takes **one object** of named parameters and returns a promise. The namespaces are `app`, `editor`, `pages`, `databases`, `workspaces`, `navigation`, `tabs`, `layout`, `search`, `assets`, `settings`, `preferences`, `appearance`, `commands`, `ui`, `clipboard` and `network`. See the [API reference](../sdk/api-reference.md) for each method's parameters, return type, permission and an example.
+Every method takes **one object** of named parameters and returns a promise. The namespaces are `app`, `editor`, `pages`, `databases`, `workspaces`, `navigation`, `tabs`, `layout`, `search`, `assets`, `settings`, `storage`, `runtime`, `plugins`, `preferences`, `appearance`, `commands`, `ui`, `clipboard` and `network`. See the [API reference](../sdk/api-reference.md) for each method's parameters, return type, permission and an example.
 
 Errors are `NoteralError` with a `code`:
 
@@ -393,7 +415,11 @@ Some calls (moving pages to the trash, opening another workspace, resetting the 
 | `page:opened` | `ActivePage \| null` | – |
 | `theme:changed` | `{ theme: "light" \| "dark" }` | – |
 | `workspace:opened` | `WorkspaceInfo` | – |
-| `pages:changed` | `{ count }` | `pages.read` |
+| `pages:changed` | `{ count, created, renamed, moved, deleted }` (page ids, one summary per batch) | `pages.read` |
+| `page:created` / `page:deleted` | `PageEventInfo` (`{ pageId, title, parentId, kind }`) | `pages.read` |
+| `page:renamed` | `PageEventInfo & { previousTitle }` | `pages.read` |
+| `page:moved` | `PageEventInfo & { previousParentId }` | `pages.read` |
+| `page:saved` | `{ pageId, title }`: any page's content was saved, including by other plugins (debounced) | `pages.read` |
 | `panel:action` | `{ panelId, actionId }` | `ui.panel` |
 | `settings:changed` | `{ options, changed }` (the user edited your Options) | `settings.read` |
 | `selection:changed` | `EditorSelection & { pageId }` (debounced, the open page only) | `editor.read` |
@@ -420,13 +446,75 @@ await this.app.editor.select({ blockId: block.id, placement: "end" });
 this.registerEvent("selection:changed", (sel) => console.log(sel.text));
 ```
 
+## Storage
+
+`loadData`/`saveData` is for a handful of settings. For indexes, caches, history or anything big, use `this.storage`. It needs no permission, nobody else can read it, and it is deleted with the plugin.
+
+```ts
+type Index = Record<string, string[]>;
+const index = (await this.storage.get<Index>("index")) ?? {};   // null when missing
+await this.storage.set("index", index);                          // any JSON, ≤ 8 MB
+await this.storage.set("prefs/lastQuery", "roadmap", "global");  // shared by every workspace
+const keys = await this.storage.list("prefs/");                  // [{ key, size, modified }]
+await this.storage.delete("index");
+```
+
+Scope `"workspace"` (the default) keeps one copy per workspace, like a vault's plugin folder; `"global"` is shared. Keys use letters, digits and `. _ : / @ + -`. `this.storage.usage()` reports bytes and keys against the 64 MB / 5000 key quota.
+
+Files in your bundle (templates, dictionaries, wasm, fonts) are readable with `this.readFile("data/words.json")`, or `readFile("model.wasm", "base64")`.
+
+## Suggesters
+
+A suggester adds a menu at the cursor when the user types its trigger character, the way `@` mentions or `[[` links work:
+
+```ts
+this.registerSuggester({ id: "people", trigger: "@", minChars: 1 }, async ({ query }) =>
+  people
+    .filter((p) => p.name.toLowerCase().includes(query.toLowerCase()))
+    .map((p) => ({ title: p.name, subtitle: p.team, insert: `@${p.name}`, link: `https://people.example/${p.id}` })));
+```
+
+The trigger and the typed query are replaced with `insert` (or the title), as a link when `link` is an `https://`, `mailto:` or `noteral://page/<id>` URL. To do something else (insert blocks, open a dialog), pass a third argument, `onSelect(item, context)`; the host then inserts nothing. `getItems` must answer within 3 s. `/` (the slash menu) and `:` (the emoji picker) are taken; add slash-menu items with `addCommand`. Up to 8 suggesters per plugin.
+
+## Plugins working together
+
+A plugin can publish an API for others, the way Dataview or Tasks are used from other Obsidian plugins:
+
+```ts
+// com.example.tasks
+this.exposeApi({
+  query: async (args: { done?: boolean }, callerId) => tasks.filter((t) => args.done === undefined || t.done === args.done),
+});
+
+// any other plugin
+const open = await this.callPlugin<Task[]>("com.example.tasks", "query", { done: false });
+const running = await this.app.plugins.running(); // [{ id, name, version, methods }]
+```
+
+Handlers run inside the exposing plugin, with its permissions, so only expose what any plugin may use; the caller's id is the second argument. Arguments and results are JSON. Calls fail when the target is not running or doesn't expose the method.
+
+## Limits
+
+| What | Limit |
+| --- | --- |
+| One message to or from the app (call params, results, view posts) | 4 MB of JSON |
+| Calls in flight per plugin | 32; each times out after 60 s |
+| `onload` | 6 s; command handlers 30 s |
+| Commands / menu items / settings fields | 50 runtime commands, 24 menu items, 40 fields |
+| Block / node data | 200 KB / 1 MB per block or page |
+| HTML of one view | 400,000 characters |
+| `loadData` settings | 64 KB, 64 keys per save |
+| `storage` | 8 MB per value, 64 MB and 5000 keys per plugin |
+| `readFile` | 8 MB per file; bundle ≤ 20 MB, 400 files, entry ≤ 2 MB, `styles.css` ≤ 512 KB |
+| `network.request` | 30 s, 5 redirects, request body 4 MB, response 3 MB (then truncated) |
+
 ## Permissions
 
 Ask for the smallest set that works. The install screen lists each permission with its risk level, and an update that adds permissions asks again. The full vocabulary is in the [API reference](../sdk/api-reference.md#permissions); the common ones:
 
 - **Low**: `editor.read`, `navigation`, `layout`, `menus`, `ui.status`, `ui.notify`, `ui.panel`, `ui.modal`, `settings.read`, `settings.write`, `assets.read`, `assets.write`, `workspaces.read`
 - **Medium**: `editor.write`, `pages.read`, `databases.read`, `search.read`, `ui.styles`, `appearance`, `preferences`, `clipboard`
-- **High**: `pages.write`, `databases.write`, `workspaces.write`, `commands.execute`, `network` (any HTTP request through the app, which can send data off the device)
+- **High**: `pages.write`, `databases.write`, `workspaces.write`, `commands.execute`, `network` (any HTTP request through the app, which can send data off the device), `network.local` (`network` plus localhost and the local network, e.g. Ollama on `http://127.0.0.1:11434`)
 
 ## Styling
 
@@ -442,7 +530,8 @@ Ask for the smallest set that works. The install screen lists each permission wi
 
 - Code runs in `<iframe sandbox="allow-scripts">` with an opaque origin: no access to the app's DOM, cookies, storage or Wails bindings.
 - The host checks every request against the approved permissions and validates it against the method's schema before running it.
-- The iframe's CSP is `default-src 'none'`, so a plugin can't `fetch` anything itself. Network access goes through `network.request`, which needs the `network` permission and refuses localhost and private addresses.
+- The iframe's CSP is `default-src 'none'`, so a plugin can't `fetch` anything itself. Network access goes through `network.request`, which needs the `network` permission and refuses localhost and private addresses unless the plugin holds `network.local`.
+- `storage` and `readFile` only ever see the calling plugin's own data and bundle. Exposed APIs run in the exposing plugin's frame with its own permissions; a caller gains nothing it couldn't do through that plugin's public methods.
 - Installed code is stored under the data directory (`plugins/<id>/`) and is never fetched again at runtime. Updates only happen when the user presses **Update**.
 
 ---
@@ -1118,7 +1207,7 @@ Point coding agents at [`docs/sdk/llms.txt`](sdk/llms.txt) (index plus every met
 ---
 
 <!-- Generated by scripts/build-sdk.mjs from frontend/src/sdk-host/spec.ts. Do not edit. -->
-# App API reference (SDK 2.1.0)
+# App API reference (SDK 2.2.0)
 
 Every method below is callable from plugins as `this.app.<namespace>.<method>(params)` and,
 where marked, by the in-app assistant as a tool named `<namespace>_<method>`.
@@ -1156,6 +1245,8 @@ All methods take one params object and return a promise.
 - [`home`](#home)
 - [`views`](#views)
 - [`source`](#source)
+- [`storage`](#storage)
+- [`runtime`](#runtime)
 - [`plugins`](#plugins)
 - [Events](#events)
 - [Permissions](#permissions)
@@ -1447,6 +1538,32 @@ Open the find bar (or find & replace) in the open page.
 | Param | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `replace` | `boolean` |  | Show the replace row. |
+
+### `editor.registerSuggester`
+
+Open a menu of your items when the user types a trigger character in a page (like @ mentions or [[ links).
+
+Use Plugin.registerSuggester(options, getItems, onSelect?) rather than calling this directly: it wires the handlers for you. The trigger is one character other than "/" (the slash menu) and ":" (the emoji picker) — the slash menu is shared; add slash items with addCommand category "Plugins"). Up to 8 suggesters per plugin. getItems must answer within 3 seconds.
+
+**Permission:** `editor.read` · **Returns:** `void` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Suggester id, unique within the plugin. |
+| `trigger` | `string` | yes | One character, e.g. "@". |
+| `minChars` | `number` |  | Characters to type after the trigger before asking you. Default `0`. |
+| `maxItems` | `number` |  | Most items shown. Default `12`. |
+| `onSelect` | `boolean` |  | Call your onSelect handler instead of inserting the item's text. |
+
+### `editor.unregisterSuggester`
+
+Remove one of the plugin's suggesters.
+
+**Permission:** `editor.read` · **Returns:** `void` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `id` | `string` | yes | Suggester id. |
 
 ## pages
 
@@ -2813,7 +2930,7 @@ Fetch a web page and return its readable text, title and links.
 
 Make an HTTP request (any method, headers and body) through the app.
 
-Requests to localhost and private networks are blocked. Bodies are text; binary responses come back base64 encoded.
+Requests to localhost and private networks are blocked unless the plugin holds network.local (e.g. to talk to Ollama or a home server). Send binary bodies base64 encoded with bodyEncoding "base64"; binary responses come back base64 encoded (encoding "base64"). Responses over 3 MB are truncated.
 
 **Permission:** `network` · **Returns:** `HttpResponse` · **Callers:** plugins
 
@@ -2822,7 +2939,9 @@ Requests to localhost and private networks are blocked. Bodies are text; binary 
 | `url` | `string` | yes | http(s) URL. |
 | `method` | `"GET" \| "POST" \| "PUT" \| "PATCH" \| "DELETE" \| "HEAD"` |  | HTTP method. Default `"GET"`. |
 | `headers` | `Record<string, string>` |  | Request headers. |
-| `body` | `string` |  | Request body. |
+| `body` | `string` |  | Request body (text, or base64 with bodyEncoding "base64"). |
+| `bodyEncoding` | `"text" \| "base64"` |  | How body is encoded. Default `"text"`. |
+| `timeoutMs` | `number` |  | Milliseconds before giving up. Default `30000`. |
 
 ## sidebar
 
@@ -3424,7 +3543,141 @@ Read it with source.get first; each find must match exactly once (whitespace dif
 | `layer` | `string` |  | Layer id when ambiguous. |
 | `edits` | `{ /** Exact text to replace (include enough context to be unique). */ find: string; /** Replacement text ("" deletes). */ replace: string; /** Replace every occurrence. */ all?: boolean; }[]` | yes | Edits, applied in order. |
 
+## storage
+
+### `storage.get`
+
+Read a value from the plugin's private storage. Returns null when the key is missing.
+
+Private to the plugin, kept on disk under the app's data folder and removed when the plugin is uninstalled. Values are any JSON up to 8 MB each, 64 MB and 5000 keys per plugin. Keys: letters, digits and . _ : / @ + - (no ".."), up to 200 characters. Workspace scope (default) keeps one copy per workspace, like a vault's .obsidian/plugins/<id>/data.json.
+
+**Permission:** none · **Returns:** `unknown` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `key` | `string` | yes | Storage key. |
+| `scope` | `"workspace" \| "global"` |  | "workspace" (default): data for the open workspace only. "global": shared by every workspace. |
+
+```ts
+const cache = (await app.storage.get({ key: "index" })) ?? {};
+```
+
+### `storage.set`
+
+Write a JSON value to the plugin's private storage. null deletes the key.
+
+**Permission:** none · **Returns:** `void` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `key` | `string` | yes | Storage key. |
+| `value` | `unknown` |  | Any JSON value; null deletes. |
+| `scope` | `"workspace" \| "global"` |  | "workspace" (default): data for the open workspace only. "global": shared by every workspace. |
+
+```ts
+await app.storage.set({ key: "index", value: { built: Date.now(), pages } });
+```
+
+### `storage.delete`
+
+Remove a key from the plugin's private storage.
+
+**Permission:** none · **Returns:** `void` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `key` | `string` | yes | Storage key. |
+| `scope` | `"workspace" \| "global"` |  | "workspace" (default): data for the open workspace only. "global": shared by every workspace. |
+
+### `storage.list`
+
+List the plugin's storage keys, optionally under a prefix.
+
+**Permission:** none · **Returns:** `StorageEntryInfo[]` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `prefix` | `string` |  | Only keys starting with this. |
+| `scope` | `"workspace" \| "global"` |  | "workspace" (default): data for the open workspace only. "global": shared by every workspace. |
+
+### `storage.clear`
+
+Delete every key (or every key under a prefix) in one scope. Returns how many were removed.
+
+**Permission:** none · **Returns:** `number` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `prefix` | `string` |  | Only keys starting with this. |
+| `scope` | `"workspace" \| "global"` |  | "workspace" (default): data for the open workspace only. "global": shared by every workspace. |
+
+### `storage.usage`
+
+How many keys and bytes the plugin stores across all scopes, and its quota.
+
+**Permission:** none · **Returns:** `StorageUsageInfo` · **Callers:** plugins
+
+No parameters.
+
+## runtime
+
+### `runtime.readFile`
+
+Read a file shipped in the plugin's bundle (templates, JSON data, wasm, fonts…).
+
+Paths are relative to the bundle root, e.g. "data/emoji.json". Up to 8 MB per file. Use encoding "base64" for binary files. Dotfiles and settings.json are not readable.
+
+**Permission:** none · **Returns:** `string` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `path` | `string` | yes | Path inside the bundle. |
+| `encoding` | `"text" \| "base64"` |  | Result encoding. Default `"text"`. |
+
+```ts
+const words = JSON.parse(await app.runtime.readFile({ path: "data/words.json" }));
+```
+
 ## plugins
+
+### `plugins.expose`
+
+Publish methods other plugins can call with plugins.call.
+
+Use Plugin.exposeApi({ name: handler, … }) rather than calling this directly. A handler runs inside your plugin with your permissions, so only expose what is safe for any plugin to call; the caller's id is passed as the second argument. Up to 100 methods.
+
+**Permission:** none · **Returns:** `void` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `methods` | `string[]` | yes | Method names. |
+
+### `plugins.running`
+
+List running plugins and the methods each one exposes.
+
+**Permission:** none · **Returns:** `PluginApiInfo[]` · **Callers:** plugins
+
+No parameters.
+
+### `plugins.call`
+
+Call a method another running plugin exposed.
+
+Rejects when the plugin is not installed, not running or does not expose the method. Default timeout 10 seconds, at most 30.
+
+**Permission:** none · **Returns:** `unknown` · **Callers:** plugins
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `plugin` | `string` | yes | Plugin id, e.g. com.example.dataview. |
+| `method` | `string` | yes | Exposed method name. |
+| `args` | `unknown` |  | Any JSON passed to the method. |
+| `timeoutMs` | `number` |  | Milliseconds to wait. Default `10000`. |
+
+```ts
+const tasks = await app.plugins.call({ plugin: "com.example.tasks", method: "query", args: { done: false } });
+```
 
 ### `plugins.list`
 
@@ -3536,9 +3789,14 @@ Subscribe with `this.registerEvent(name, handler)`. Events are only computed whi
 | `workspace:opened` | `WorkspaceInfo` | none | A workspace was opened. |
 | `selection:changed` | `EditorSelection & { pageId: string }` | `editor.read` | The cursor or selection moved in the open page (debounced). |
 | `layout:changed` | `LayoutInfo` | `layout` | Panes, tabs, sidebars or their tabs changed (debounced). |
-| `pages:changed` | `{ count: number }` | `pages.read` | Pages were created, renamed, moved or trashed. |
+| `pages:changed` | `{ count: number; created: string[]; renamed: string[]; moved: string[]; deleted: string[] }` | `pages.read` | Pages were created, renamed, moved or trashed (one summary per batch; see page:created and friends for details). |
 | `panel:action` | `{ panelId: string; actionId: string }` | `ui.panel` | A button in one of the plugin's panels or Markdown tabs was pressed. |
 | `settings:changed` | `{ options: Record<string, unknown>; changed: string[] }` | `settings.read` | The user changed the plugin's options. |
+| `page:created` | `PageEventInfo` | `pages.read` | A page, folder, database or custom node was created. |
+| `page:renamed` | `PageEventInfo & { previousTitle: string }` | `pages.read` | A page's title changed. |
+| `page:moved` | `PageEventInfo & { previousParentId: string \| null }` | `pages.read` | A page moved to another parent. |
+| `page:deleted` | `PageEventInfo` | `pages.read` | A page was moved to the trash. |
+| `page:saved` | `{ pageId: string; title: string }` | `pages.read` | A page's content was saved (any page, not only the open one; debounced per page). |
 | `view:message` | `{ view: string; name: string; payload: unknown }` | none | One of the plugin's HTML views called noteral.post(name, payload). |
 
 ## Permissions
@@ -3570,6 +3828,7 @@ Subscribe with `this.registerEvent(name, handler)`. Events are only computed whi
 | `commands.execute` | high | **Run commands.** Run any command from the command palette. |
 | `clipboard` | medium | **Clipboard.** Read and write the clipboard. |
 | `network` | high | **Internet access.** Make web requests, search the web and fetch pages. |
+| `network.local` | high | **Local network access.** Everything Internet access allows, plus servers on this computer and your local network (for example a local AI model). |
 | `blocks` | low | **Custom blocks.** Add new kinds of blocks to the editor (rendered in a sandbox). |
 | `nodes` | low | **Custom page types.** Add new kinds of items to the page tree (rendered in a sandbox). |
 | `home` | medium | **Home.** Create, change and remove Home views and widgets. |
@@ -4349,5 +4608,64 @@ export interface SourceEntry {
   fields: Record<string, number>;
   /** False for plugin-owned items: change them with plugins.edit. */
   editable: boolean;
+}
+
+/** One key in a plugin's private storage (storage.list). */
+export interface StorageEntryInfo {
+  key: string;
+  /** Size of the stored JSON in bytes. */
+  size: number;
+  /** ISO time of the last write. */
+  modified: string;
+}
+
+/** How much a plugin stores across all scopes (storage.usage). */
+export interface StorageUsageInfo {
+  keys: number;
+  bytes: number;
+  maxBytes: number;
+}
+
+/** A running plugin and the methods it exposes to other plugins (plugins.list). */
+export interface PluginApiInfo {
+  id: string;
+  name: string;
+  version: string;
+  /** Methods callable with plugins.call; empty when the plugin exposes none. */
+  methods: string[];
+}
+
+/** One row a suggester returns (Plugin.registerSuggester). */
+export interface SuggestItem {
+  /** Stable id, passed back to onSelect. */
+  id?: string;
+  title: string;
+  /** Second line, e.g. a path or a description. */
+  subtitle?: string;
+  /** Group heading in the menu. */
+  group?: string;
+  /** Text inserted in place of the trigger and query. Defaults to title. Ignored when onSelect handles it. */
+  insert?: string;
+  /** Turn the inserted text into a link: an https URL or noteral://page/<pageId>. */
+  link?: string;
+  /** Any JSON you want back in onSelect. */
+  data?: unknown;
+}
+
+/** Where a suggester was opened. */
+export interface SuggestContext {
+  /** What was typed after the trigger. */
+  query: string;
+  trigger: string;
+  pageId: string | null;
+  blockId: string | null;
+}
+
+/** Payload of page:created, page:deleted (and the base of page:renamed / page:moved). */
+export interface PageEventInfo {
+  pageId: string;
+  title: string;
+  parentId: string | null;
+  kind: string;
 }
 ```

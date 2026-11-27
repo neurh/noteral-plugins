@@ -21,7 +21,7 @@ import { createInterface } from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 // @generated permissions start
-export const SDK_VERSION = "2.1.0";
+export const SDK_VERSION = "2.2.0";
 export const PERMISSIONS = [
   { id: "editor.read", title: "Read the open page", risk: "low" },
   { id: "editor.write", title: "Edit the open page", risk: "medium" },
@@ -48,6 +48,7 @@ export const PERMISSIONS = [
   { id: "commands.execute", title: "Run commands", risk: "high" },
   { id: "clipboard", title: "Clipboard", risk: "medium" },
   { id: "network", title: "Internet access", risk: "high" },
+  { id: "network.local", title: "Local network access", risk: "high" },
   { id: "blocks", title: "Custom blocks", risk: "low" },
   { id: "nodes", title: "Custom page types", risk: "low" },
   { id: "home", title: "Home", risk: "medium" },

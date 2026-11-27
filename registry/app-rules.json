@@ -1,6 +1,6 @@
 {
   "note": "Generated from internal/plugins by Noteral's scripts/export-plugin-hub.mjs",
-  "sdkVersion": "2.1.0",
+  "sdkVersion": "2.2.0",
   "permissions": [
     "appearance",
     "assets.read",
@@ -17,6 +17,7 @@
     "menus",
     "navigation",
     "network",
+    "network.local",
     "nodes",
     "pages.read",
     "pages.write",

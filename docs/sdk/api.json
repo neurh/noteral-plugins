@@ -1,5 +1,5 @@
 {
-  "sdkVersion": "2.1.0",
+  "sdkVersion": "2.2.0",
   "generatedFrom": "frontend/src/sdk-host/spec.ts",
   "tiers": {
     "read": "Ask mode and up",
@@ -158,6 +158,12 @@
       "risk": "high"
     },
     {
+      "id": "network.local",
+      "title": "Local network access",
+      "description": "Everything Internet access allows, plus servers on this computer and your local network (for example a local AI model).",
+      "risk": "high"
+    },
+    {
       "id": "blocks",
       "title": "Custom blocks",
       "description": "Add new kinds of blocks to the editor (rendered in a sandbox).",
@@ -221,9 +227,9 @@
     },
     {
       "name": "pages:changed",
-      "summary": "Pages were created, renamed, moved or trashed.",
+      "summary": "Pages were created, renamed, moved or trashed (one summary per batch; see page:created and friends for details).",
       "permission": "pages.read",
-      "payload": "{ count: number }"
+      "payload": "{ count: number; created: string[]; renamed: string[]; moved: string[]; deleted: string[] }"
     },
     {
       "name": "panel:action",
@@ -236,6 +242,36 @@
       "summary": "The user changed the plugin's options.",
       "permission": "settings.read",
       "payload": "{ options: Record<string, unknown>; changed: string[] }"
+    },
+    {
+      "name": "page:created",
+      "summary": "A page, folder, database or custom node was created.",
+      "permission": "pages.read",
+      "payload": "PageEventInfo"
+    },
+    {
+      "name": "page:renamed",
+      "summary": "A page's title changed.",
+      "permission": "pages.read",
+      "payload": "PageEventInfo & { previousTitle: string }"
+    },
+    {
+      "name": "page:moved",
+      "summary": "A page moved to another parent.",
+      "permission": "pages.read",
+      "payload": "PageEventInfo & { previousParentId: string | null }"
+    },
+    {
+      "name": "page:deleted",
+      "summary": "A page was moved to the trash.",
+      "permission": "pages.read",
+      "payload": "PageEventInfo"
+    },
+    {
+      "name": "page:saved",
+      "summary": "A page's content was saved (any page, not only the open one; debounced per page).",
+      "permission": "pages.read",
+      "payload": "{ pageId: string; title: string }"
     },
     {
       "name": "view:message",
@@ -6563,7 +6599,7 @@
     {
       "name": "network.request",
       "summary": "Make an HTTP request (any method, headers and body) through the app.",
-      "details": "Requests to localhost and private networks are blocked. Bodies are text; binary responses come back base64 encoded.",
+      "details": "Requests to localhost and private networks are blocked unless the plugin holds network.local (e.g. to talk to Ollama or a home server). Send binary bodies base64 encoded with bodyEncoding \"base64\"; binary responses come back base64 encoded (encoding \"base64\"). Responses over 3 MB are truncated.",
       "permission": "network",
       "tier": "read",
       "callers": [
@@ -6602,8 +6638,24 @@
           },
           "body": {
             "type": "string",
-            "description": "Request body.",
-            "maxLength": 2000000
+            "description": "Request body (text, or base64 with bodyEncoding \"base64\").",
+            "maxLength": 4000000
+          },
+          "bodyEncoding": {
+            "type": "string",
+            "description": "How body is encoded.",
+            "enum": [
+              "text",
+              "base64"
+            ],
+            "default": "text"
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "description": "Milliseconds before giving up.",
+            "minimum": 1000,
+            "maximum": 30000,
+            "default": 30000
           }
         },
         "required": [
@@ -8759,6 +8811,443 @@
         "additionalProperties": false
       },
       "returns": "{ target: string; field: string; replaced: number; length: number; owner?: string }"
+    },
+    {
+      "name": "storage.get",
+      "summary": "Read a value from the plugin's private storage. Returns null when the key is missing.",
+      "details": "Private to the plugin, kept on disk under the app's data folder and removed when the plugin is uninstalled. Values are any JSON up to 8 MB each, 64 MB and 5000 keys per plugin. Keys: letters, digits and . _ : / @ + - (no \"..\"), up to 200 characters. Workspace scope (default) keeps one copy per workspace, like a vault's .obsidian/plugins/<id>/data.json.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Storage key.",
+            "maxLength": 200,
+            "minLength": 1
+          },
+          "scope": {
+            "type": "string",
+            "description": "\"workspace\" (default): data for the open workspace only. \"global\": shared by every workspace.",
+            "enum": [
+              "workspace",
+              "global"
+            ]
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "unknown",
+      "example": "const cache = (await app.storage.get({ key: \"index\" })) ?? {};"
+    },
+    {
+      "name": "storage.set",
+      "summary": "Write a JSON value to the plugin's private storage. null deletes the key.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Storage key.",
+            "maxLength": 200,
+            "minLength": 1
+          },
+          "value": {
+            "description": "Any JSON value; null deletes.",
+            "json": true,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "description": "\"workspace\" (default): data for the open workspace only. \"global\": shared by every workspace.",
+            "enum": [
+              "workspace",
+              "global"
+            ]
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void",
+      "example": "await app.storage.set({ key: \"index\", value: { built: Date.now(), pages } });"
+    },
+    {
+      "name": "storage.delete",
+      "summary": "Remove a key from the plugin's private storage.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Storage key.",
+            "maxLength": 200,
+            "minLength": 1
+          },
+          "scope": {
+            "type": "string",
+            "description": "\"workspace\" (default): data for the open workspace only. \"global\": shared by every workspace.",
+            "enum": [
+              "workspace",
+              "global"
+            ]
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "storage.list",
+      "summary": "List the plugin's storage keys, optionally under a prefix.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "prefix": {
+            "type": "string",
+            "description": "Only keys starting with this.",
+            "maxLength": 200
+          },
+          "scope": {
+            "type": "string",
+            "description": "\"workspace\" (default): data for the open workspace only. \"global\": shared by every workspace.",
+            "enum": [
+              "workspace",
+              "global"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "StorageEntryInfo[]"
+    },
+    {
+      "name": "storage.clear",
+      "summary": "Delete every key (or every key under a prefix) in one scope. Returns how many were removed.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "prefix": {
+            "type": "string",
+            "description": "Only keys starting with this.",
+            "maxLength": 200
+          },
+          "scope": {
+            "type": "string",
+            "description": "\"workspace\" (default): data for the open workspace only. \"global\": shared by every workspace.",
+            "enum": [
+              "workspace",
+              "global"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "returns": "number"
+    },
+    {
+      "name": "storage.usage",
+      "summary": "How many keys and bytes the plugin stores across all scopes, and its quota.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "StorageUsageInfo"
+    },
+    {
+      "name": "runtime.readFile",
+      "summary": "Read a file shipped in the plugin's bundle (templates, JSON data, wasm, fonts…).",
+      "details": "Paths are relative to the bundle root, e.g. \"data/emoji.json\". Up to 8 MB per file. Use encoding \"base64\" for binary files. Dotfiles and settings.json are not readable.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path inside the bundle.",
+            "maxLength": 400,
+            "minLength": 1
+          },
+          "encoding": {
+            "type": "string",
+            "description": "Result encoding.",
+            "enum": [
+              "text",
+              "base64"
+            ],
+            "default": "text"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "string",
+      "example": "const words = JSON.parse(await app.runtime.readFile({ path: \"data/words.json\" }));"
+    },
+    {
+      "name": "editor.registerSuggester",
+      "summary": "Open a menu of your items when the user types a trigger character in a page (like @ mentions or [[ links).",
+      "details": "Use Plugin.registerSuggester(options, getItems, onSelect?) rather than calling this directly: it wires the handlers for you. The trigger is one character other than \"/\" (the slash menu) and \":\" (the emoji picker) — the slash menu is shared; add slash items with addCommand category \"Plugins\"). Up to 8 suggesters per plugin. getItems must answer within 3 seconds.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Suggester id, unique within the plugin.",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "trigger": {
+            "type": "string",
+            "description": "One character, e.g. \"@\".",
+            "maxLength": 2,
+            "minLength": 1
+          },
+          "minChars": {
+            "type": "integer",
+            "description": "Characters to type after the trigger before asking you.",
+            "minimum": 0,
+            "maximum": 10,
+            "default": 0
+          },
+          "maxItems": {
+            "type": "integer",
+            "description": "Most items shown.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 12
+          },
+          "onSelect": {
+            "type": "boolean",
+            "description": "Call your onSelect handler instead of inserting the item's text."
+          }
+        },
+        "required": [
+          "id",
+          "trigger"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "editor.unregisterSuggester",
+      "summary": "Remove one of the plugin's suggesters.",
+      "permission": "editor.read",
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Suggester id.",
+            "maxLength": 64,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "plugins.expose",
+      "summary": "Publish methods other plugins can call with plugins.call.",
+      "details": "Use Plugin.exposeApi({ name: handler, … }) rather than calling this directly. A handler runs inside your plugin with your permissions, so only expose what is safe for any plugin to call; the caller's id is passed as the second argument. Up to 100 methods.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "methods": {
+            "type": "array",
+            "description": "Method names.",
+            "items": {
+              "type": "string",
+              "description": "Method name.",
+              "maxLength": 64
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "methods"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "void"
+    },
+    {
+      "name": "plugins.running",
+      "summary": "List running plugins and the methods each one exposes.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "returns": "PluginApiInfo[]"
+    },
+    {
+      "name": "plugins.call",
+      "summary": "Call a method another running plugin exposed.",
+      "details": "Rejects when the plugin is not installed, not running or does not expose the method. Default timeout 10 seconds, at most 30.",
+      "permission": null,
+      "tier": "read",
+      "callers": [
+        "plugin"
+      ],
+      "confirm": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "plugin": {
+            "type": "string",
+            "description": "Plugin id, e.g. com.example.dataview.",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "method": {
+            "type": "string",
+            "description": "Exposed method name.",
+            "maxLength": 64,
+            "minLength": 1
+          },
+          "args": {
+            "description": "Any JSON passed to the method.",
+            "json": true,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": true
+              }
+            ]
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "description": "Milliseconds to wait.",
+            "minimum": 100,
+            "maximum": 30000,
+            "default": 10000
+          }
+        },
+        "required": [
+          "plugin",
+          "method"
+        ],
+        "additionalProperties": false
+      },
+      "returns": "unknown",
+      "example": "const tasks = await app.plugins.call({ plugin: \"com.example.tasks\", method: \"query\", args: { done: false } });"
     },
     {
       "name": "plugins.list",

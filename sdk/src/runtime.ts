@@ -12,9 +12,16 @@ import type {
   PanelAction,
   PluginManifest,
   StatusOptions,
+  StorageEntryInfo,
+  StorageUsageInfo,
+  SuggestContext,
+  SuggestItem,
 } from "./types";
 
-export const SDK_VERSION = "2.1.0";
+/** "workspace" keeps one copy per workspace; "global" is shared by all of them. */
+export type StorageScope = "workspace" | "global";
+
+export const SDK_VERSION = "2.2.0";
 
 type Json = Record<string, unknown>;
 type Disposer = () => void;
@@ -79,7 +86,9 @@ export const app: NoteralApp = makeApp();
 // ── events and commands ─────────────────────────────────────────────────────
 
 const eventHandlers = new Map<string, Set<(data: unknown) => void>>();
-const commandHandlers = new Map<string, (context?: MenuContext) => unknown>();
+// Handlers the host can call: commands, menu items, suggesters ("__suggest:<id>",
+// "__select:<id>") and exposed APIs ("__api:<method>"). Their return value goes back.
+const commandHandlers = new Map<string, (context?: any) => unknown>();
 
 function onEvent(event: string, handler: (data: unknown) => void): Disposer {
   let set = eventHandlers.get(event);
@@ -122,7 +131,7 @@ export interface CommandDefinition {
 }
 
 /** App menus a plugin can add items to. */
-export type MenuSlot = "page" | "tree" | "block" | "tab" | "status";
+export type MenuSlot = "page" | "tree" | "block" | "tab" | "tabItem" | "status" | "assistant" | "treeSelection";
 
 /** What a menu was opened on; passed to the command a menu item runs. */
 export interface MenuContext {
@@ -347,6 +356,78 @@ export class Plugin {
     return call<T>("settings.set", { patch });
   }
 
+  /**
+   * Private key/value storage for larger data (indexes, caches, history): any JSON up
+   * to 8 MB per key, no permission needed. Per workspace by default.
+   *
+   * ```ts
+   * const index = (await this.storage.get<Index>("index")) ?? {};
+   * await this.storage.set("index", index);
+   * ```
+   */
+  readonly storage = {
+    get: <T = unknown>(key: string, scope: StorageScope = "workspace") => call<T | null>("storage.get", { key, scope }),
+    set: (key: string, value: unknown, scope: StorageScope = "workspace") => call<void>("storage.set", { key, value: value ?? null, scope }),
+    delete: (key: string, scope: StorageScope = "workspace") => call<void>("storage.delete", { key, scope }),
+    list: (prefix = "", scope: StorageScope = "workspace") => call<StorageEntryInfo[]>("storage.list", { prefix, scope }),
+    clear: (prefix = "", scope: StorageScope = "workspace") => call<number>("storage.clear", { prefix, scope }),
+    usage: () => call<StorageUsageInfo>("storage.usage", {}),
+  };
+
+  /** Reads a file shipped in the plugin's bundle, e.g. `readFile("data/words.json")`. */
+  readFile(path: string, encoding: "text" | "base64" = "text"): Promise<string> {
+    return call<string>("runtime.readFile", { path, encoding });
+  }
+
+  /**
+   * Shows your items when the user types `trigger` in a page (needs `editor.read`).
+   * Return items for the query; the picked item's `insert` (or title) replaces the
+   * trigger and query, as a link when `link` is set. Pass `onSelect` to handle the pick
+   * yourself (e.g. with editor.insertText or editor.insertBlocks).
+   *
+   * ```ts
+   * this.registerSuggester({ id: "people", trigger: "@" }, async ({ query }) =>
+   *   people.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()))
+   *     .map((p) => ({ title: p.name, subtitle: p.team, insert: `@${p.name}` })));
+   * ```
+   */
+  registerSuggester(
+    options: { id: string; trigger: string; minChars?: number; maxItems?: number },
+    getItems: (context: SuggestContext) => SuggestItem[] | Promise<SuggestItem[]>,
+    onSelect?: (item: SuggestItem, context: SuggestContext) => unknown,
+  ): void {
+    const suggest = `__suggest:${options.id}`;
+    const select = `__select:${options.id}`;
+    commandHandlers.set(suggest, (context: SuggestContext) => getItems(context));
+    if (onSelect) commandHandlers.set(select, (input: { item: SuggestItem; context: SuggestContext }) => onSelect(input.item, input.context));
+    void call("editor.registerSuggester", { ...options, onSelect: Boolean(onSelect) }).catch(reportError);
+    this.register(() => {
+      commandHandlers.delete(suggest);
+      commandHandlers.delete(select);
+      void call("editor.unregisterSuggester", { id: options.id }).catch(() => undefined);
+    });
+  }
+
+  /**
+   * Lets other plugins call these methods with `app.plugins.call({ plugin, method, args })`.
+   * Each handler gets the args and the calling plugin's id. Calling it again replaces the set.
+   */
+  exposeApi(methods: Record<string, (args: any, callerId: string) => unknown>): void {
+    for (const key of Array.from(commandHandlers.keys())) if (key.startsWith("__api:")) commandHandlers.delete(key);
+    for (const [name, handler] of Object.entries(methods)) {
+      commandHandlers.set(`__api:${name}`, (input: { args: unknown; caller: string }) => handler(input?.args, input?.caller ?? ""));
+    }
+    void call("plugins.expose", { methods: Object.keys(methods) }).catch(reportError);
+    this.register(() => {
+      for (const name of Object.keys(methods)) commandHandlers.delete(`__api:${name}`);
+    });
+  }
+
+  /** Calls a method another plugin exposed with exposeApi. */
+  callPlugin<T = unknown>(plugin: string, method: string, args?: unknown, timeoutMs?: number): Promise<T> {
+    return call<T>("plugins.call", { plugin, method, args: args ?? null, ...(timeoutMs ? { timeoutMs } : {}) });
+  }
+
   /** @internal */
   async __unload() {
     try {
@@ -481,12 +562,17 @@ async function shutdown() {
   pending.clear();
 }
 
+function toJson(value: unknown): unknown {
+  if (value === undefined) return null;
+  return JSON.parse(JSON.stringify(value));
+}
+
 async function runCommand(commandId: string, requestId: string, context: MenuContext | undefined) {
   const handler = commandHandlers.get(commandId);
   try {
     if (!handler) throw new Error(`No handler for command "${commandId}".`);
-    await handler(context);
-    post({ type: "commandResult", requestId, ok: true });
+    const result = await handler(context);
+    post({ type: "commandResult", requestId, ok: true, result: commandId.startsWith("__") ? toJson(result) : undefined });
   } catch (error) {
     post({ type: "commandResult", requestId, ok: false, error: error instanceof Error ? error.message : String(error) });
   }

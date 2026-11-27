@@ -776,3 +776,62 @@ export interface SourceEntry {
   /** False for plugin-owned items: change them with plugins.edit. */
   editable: boolean;
 }
+
+/** One key in a plugin's private storage (storage.list). */
+export interface StorageEntryInfo {
+  key: string;
+  /** Size of the stored JSON in bytes. */
+  size: number;
+  /** ISO time of the last write. */
+  modified: string;
+}
+
+/** How much a plugin stores across all scopes (storage.usage). */
+export interface StorageUsageInfo {
+  keys: number;
+  bytes: number;
+  maxBytes: number;
+}
+
+/** A running plugin and the methods it exposes to other plugins (plugins.list). */
+export interface PluginApiInfo {
+  id: string;
+  name: string;
+  version: string;
+  /** Methods callable with plugins.call; empty when the plugin exposes none. */
+  methods: string[];
+}
+
+/** One row a suggester returns (Plugin.registerSuggester). */
+export interface SuggestItem {
+  /** Stable id, passed back to onSelect. */
+  id?: string;
+  title: string;
+  /** Second line, e.g. a path or a description. */
+  subtitle?: string;
+  /** Group heading in the menu. */
+  group?: string;
+  /** Text inserted in place of the trigger and query. Defaults to title. Ignored when onSelect handles it. */
+  insert?: string;
+  /** Turn the inserted text into a link: an https URL or noteral://page/<pageId>. */
+  link?: string;
+  /** Any JSON you want back in onSelect. */
+  data?: unknown;
+}
+
+/** Where a suggester was opened. */
+export interface SuggestContext {
+  /** What was typed after the trigger. */
+  query: string;
+  trigger: string;
+  pageId: string | null;
+  blockId: string | null;
+}
+
+/** Payload of page:created, page:deleted (and the base of page:renamed / page:moved). */
+export interface PageEventInfo {
+  pageId: string;
+  title: string;
+  parentId: string | null;
+  kind: string;
+}

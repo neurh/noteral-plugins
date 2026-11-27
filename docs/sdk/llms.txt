@@ -1,6 +1,6 @@
 # Noteral plugin SDK
 
-> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.1.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
+> Noteral is a local-first notes app. Plugins are sandboxed iframes that call a versioned App API (SDK 2.2.0) over postMessage. A plugin is a manifest.json + one bundled main.js (+ optional styles.css), published as a GitHub Release and listed in the community registry.
 
 Rules for agents writing plugins:
 - Extend `Plugin`, put setup in `onload()`, and finish main.js with `register(MyPlugin)`. Use `this.addCommand`, `this.registerEvent`, `this.registerInterval` so cleanup is automatic.
@@ -150,7 +150,7 @@ Rules for agents writing plugins:
 - clipboard.writeText({text}) → void [clipboard] — Copy text to the clipboard.
 - web.search({query, limit?}) → WebSearchResult [network] — Search the web (free, no API key). Returns titles, URLs and snippets.
 - web.fetch({url, maxChars?}) → WebPage [network] — Fetch a web page and return its readable text, title and links.
-- network.request({url, method?, headers?, body?}) → HttpResponse [network] — Make an HTTP request (any method, headers and body) through the app.
+- network.request({url, method?, headers?, body?, bodyEncoding?, timeoutMs?}) → HttpResponse [network] — Make an HTTP request (any method, headers and body) through the app.
 - sidebar.list({}) → SidebarInfo — List the right sidebar's tab groups (stacked panels) and every available tab.
 - sidebar.setTab({id, title, icon?, markdown?, actions?, html?, open?, split?, layer?}) → SidebarTabInfo [ui.panel] — Add or update a right-sidebar tab with Markdown (+ buttons) or a full HTML view.
 - sidebar.removeTab({id, layer?}) → void [ui.panel] — Remove a tab added with sidebar.setTab.
@@ -190,6 +190,18 @@ Rules for agents writing plugins:
 - home.updateWidget({viewId, widgetId, type?, x?, y?, w?, h?, title?, hideTitle?, style?, tint?, variant?, text?, limit?, pageId?, pageIds?, url?, date?, html?, css?, data?}) → HomeWidgetInfo [home] — Change a Home widget (position, size, style, content).
 - home.removeWidget({viewId, widgetId}) → void [home] — Remove a Home widget.
 - views.post({name, payload?, view?}) → { delivered: number } — Send a message to the plugin's HTML views (tabs, widgets, blocks, pages); they receive it with noteral.onMessage.
+- storage.get({key, scope?}) → unknown — Read a value from the plugin's private storage. Returns null when the key is missing.
+- storage.set({key, value?, scope?}) → void — Write a JSON value to the plugin's private storage. null deletes the key.
+- storage.delete({key, scope?}) → void — Remove a key from the plugin's private storage.
+- storage.list({prefix?, scope?}) → StorageEntryInfo[] — List the plugin's storage keys, optionally under a prefix.
+- storage.clear({prefix?, scope?}) → number — Delete every key (or every key under a prefix) in one scope. Returns how many were removed.
+- storage.usage({}) → StorageUsageInfo — How many keys and bytes the plugin stores across all scopes, and its quota.
+- runtime.readFile({path, encoding?}) → string — Read a file shipped in the plugin's bundle (templates, JSON data, wasm, fonts…).
+- editor.registerSuggester({id, trigger, minChars?, maxItems?, onSelect?}) → void [editor.read] — Open a menu of your items when the user types a trigger character in a page (like @ mentions or [[ links).
+- editor.unregisterSuggester({id}) → void [editor.read] — Remove one of the plugin's suggesters.
+- plugins.expose({methods}) → void — Publish methods other plugins can call with plugins.call.
+- plugins.running({}) → PluginApiInfo[] — List running plugins and the methods each one exposes.
+- plugins.call({plugin, method, args?, timeoutMs?}) → unknown — Call a method another running plugin exposed.
 
 ## Events
 
@@ -199,9 +211,14 @@ Rules for agents writing plugins:
 - workspace:opened: WorkspaceInfo — A workspace was opened.
 - selection:changed: EditorSelection & { pageId: string } — The cursor or selection moved in the open page (debounced).
 - layout:changed: LayoutInfo — Panes, tabs, sidebars or their tabs changed (debounced).
-- pages:changed: { count: number } — Pages were created, renamed, moved or trashed.
+- pages:changed: { count: number; created: string[]; renamed: string[]; moved: string[]; deleted: string[] } — Pages were created, renamed, moved or trashed (one summary per batch; see page:created and friends for details).
 - panel:action: { panelId: string; actionId: string } — A button in one of the plugin's panels or Markdown tabs was pressed.
 - settings:changed: { options: Record<string, unknown>; changed: string[] } — The user changed the plugin's options.
+- page:created: PageEventInfo — A page, folder, database or custom node was created.
+- page:renamed: PageEventInfo & { previousTitle: string } — A page's title changed.
+- page:moved: PageEventInfo & { previousParentId: string | null } — A page moved to another parent.
+- page:deleted: PageEventInfo — A page was moved to the trash.
+- page:saved: { pageId: string; title: string } — A page's content was saved (any page, not only the open one; debounced per page).
 - view:message: { view: string; name: string; payload: unknown } — One of the plugin's HTML views called noteral.post(name, payload).
 
 ## Permissions
@@ -231,6 +248,7 @@ Rules for agents writing plugins:
 - commands.execute (high): Run any command from the command palette.
 - clipboard (medium): Read and write the clipboard.
 - network (high): Make web requests, search the web and fetch pages.
+- network.local (high): Everything Internet access allows, plus servers on this computer and your local network (for example a local AI model).
 - blocks (low): Add new kinds of blocks to the editor (rendered in a sandbox).
 - nodes (low): Add new kinds of items to the page tree (rendered in a sandbox).
 - home (medium): Create, change and remove Home views and widgets.

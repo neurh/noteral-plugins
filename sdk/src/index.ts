@@ -20,7 +20,7 @@ import type * as Runtime from "./runtime";
 
 export type * from "./types";
 export type { NoteralApp, NoteralEventMap, NoteralEventName, Permission } from "./api.generated";
-export type { CommandDefinition, LegacyContext, MenuContext, MenuItemDefinition, MenuSlot, NoteralGlobal, PanelContent, PluginClass, SettingField } from "./runtime";
+export type { CommandDefinition, LegacyContext, MenuContext, MenuItemDefinition, MenuSlot, NoteralGlobal, PanelContent, PluginClass, SettingField, StorageScope } from "./runtime";
 /** SDK 1.x name for the `definePlugin` context. */
 export type PluginContext = Runtime.LegacyContext;
 
