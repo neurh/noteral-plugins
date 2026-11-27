@@ -1,4 +1,12 @@
 {
   "version": 1,
-  "plugins": []
+  "plugins": [
+    {
+      "id": "com.neurh.noteral-excalidraw",
+      "name": "Excalidraw",
+      "author": "HUSSEIN",
+      "description": "The real Excalidraw whiteboard in Noteral: drawing pages, inline sketches and live embeds, with a shared library and copy as SVG/PNG.",
+      "repo": "neurh/noteral-excalidraw"
+    }
+  ]
 }
