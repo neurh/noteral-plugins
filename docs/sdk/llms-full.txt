@@ -795,12 +795,17 @@ Every HTML view gets `window.noteral`:
 | `noteral.post(name, payload)` | Sends a message to your plugin, which receives it as the `view:message` event. |
 | `onMessage(fn)` | Receives `views.post(...)` messages from your plugin. |
 | `noteral.open(target)` | Opens a page id, `noteral://page/<id>` or an `https://` URL. |
+| `noteral.popover(opts, at)` | Opens an HTML popover anchored to `at`: an element, a rect, `"self"` (this view), `"pointer"`, `"selection"`, `"status:<widgetId>"` or `"block:<id>"`. Resolves with the value the popover closes with. |
+| `noteral.menu(items, at)` / `contextMenu(items, event)` | A native menu; resolves with the picked item's id. |
+| `noteral.modal(opts)` | An HTML dialog; resolves with its close value. |
+| `noteral.close(value)` | Closes the popover, dialog or editor this view is in, returning `value`. |
+| `noteral.resize()` | Measures the content again (height, and width in the status bar). |
 
 Views follow the app's theme automatically. Every token (`--bg`, `--text`, `--accent`, `--border`, `--radius-md`, `--font-ui`, …) is defined inside the frame. A small kit is also built in: `.n-card`, `.n-row`, `.n-col`, `.n-grid`, `.n-list`, `.n-chip`, `.n-muted`, `.n-faint`, and buttons with `.primary` / `.ghost`. Height follows the content (it grows and shrinks) unless the surface fills its space (full custom pages, Home widgets).
 
 **Your CSS always wins.** The kit lives in a cascade layer (`@layer noteral`) and uses zero-specificity `:where()` selectors, so any rule you write overrides it, with no `!important` needed. The frame itself is **transparent**: `html` and `body` have no background, and the iframe follows the app's color scheme, so the browser doesn't paint a white or black canvas behind a view. If you want a card, give it a background yourself (`background: var(--bg-elevated)`).
 
-**Surfaces.** `noteral.surface` (also `<html data-surface="…">`) tells a view where it is drawn: `page`, `block`, `sidebar`, `status`, `home` or `panel`. `noteral.fill` is `true` when the view should fill its box. Use them to adapt one view to several places:
+**Surfaces.** `noteral.surface` (also `<html data-surface="…">`) tells a view where it is drawn: `page`, `block`, `sidebar`, `status`, `home`, `panel`, `popover` or `overlay`. `noteral.fill` is `true` when the view should fill its box. Use them to adapt one view to several places:
 
 ```css
 html[data-surface="status"] body { font-size: 12px; }   /* the kit is already compact there */
@@ -902,11 +907,14 @@ Field types are `toggle`, `text`, `textarea`, `number`, `slider` (`min`/`max`/`s
 
 ```ts
 await this.app.statusBar.setWidget({ id: "clock", text: "12:00", icon: "clock", side: "right", order: 5 });
-// or a live HTML widget, 16–480 px wide:
-await this.app.statusBar.setWidget({ id: "pomodoro", html: "<span id=t>25:00</span><script>…</script>", width: 72 });
+// or a live HTML widget; width is px, "auto" (fits its content), "fill" (takes the free space) or "40%":
+await this.app.statusBar.setWidget({ id: "pomodoro", html: "<span id=t>25:00</span><script>…</script>", width: "auto", minWidth: 60 });
+// a popup next to the widget, opened and closed by clicking it:
+await this.app.statusBar.setWidget({ id: "sync", icon: "cloud", tone: "success", badge: "2", popup: { html: "<h3>Sync</h3>…", width: 280 } });
+await this.app.statusBar.updateWidget({ id: "sync", progress: 0.6, text: "60%" }); // merge a change
 ```
 
-Set `command` on a text widget to run one of your commands when it's clicked.
+Set `command` on a text widget to run one of your commands when it's clicked. The command receives `{ source: "status", widget, anchor }`, so it can open a popover at `anchor`. See [Status bar widgets and popups](README.md#status-bar-widgets-and-popups) for every option, [Floating overlays](README.md#floating-overlays) and [Custom database property types](README.md#custom-database-property-types).
 
 ## Home
 
@@ -1222,6 +1230,8 @@ The context ring in the composer opens a **context window** breakdown: a segment
 ### Creator mode and plugins
 
 In Creator mode the assistant can build interface as well as change settings: right-sidebar tabs (stacked in split groups), status-bar widgets, custom editor blocks, custom page types in the tree, Home views with HTML widgets and custom CSS, database views, filters, sorts and properties. These are the same methods plugins use, described in [Extending the interface](plugins/ui.md).
+
+While it writes plugin code, the assistant looks things up with `plugins.docs`: sections of the [plugin guide](plugins/README.md) by topic, any method or namespace in the API reference (including plugin-only ones such as `storage`, suggesters and popovers, which it has no tools for) and the API's type definitions. The guide is built into the app from `docs/plugins/*.md` by `scripts/build-sdk.mjs`, so it always matches the SDK version.
 
 When it writes a plugin with `plugins.create`, the assistant first runs it in a throwaway sandbox with `plugins.test`. If it throws or logs errors, the assistant reads the error, fixes the code and tests again. After installing, it checks the plugin's start-up health and reads `plugins.logs` when something fails. You see the name, permissions and size in an approval card. Approving installs it as **Made by assistant**.
 
@@ -3957,6 +3967,21 @@ List installed plugins.
 
 No parameters.
 
+### `plugins.docs`
+
+Look up the plugin guide, the full API reference (including plugin-only methods such as storage, suggesters, popovers and plugins.expose) and type definitions.
+
+Use it while writing or fixing a plugin instead of guessing. No arguments: an index of guide sections, namespaces, events and permissions. topic: guide sections matching words (e.g. "overlays", "property types", "storage", "view runtime", "manifest contributes"). method: one method ("statusBar.setWidget") or a whole namespace ("storage") with parameters. type: a type definition ("PropertyTypeDefinition").
+
+**Permission:** none · **Returns:** `PluginDocsResult` · **Callers:** assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `topic` | `string` |  | Words to find in the guide. |
+| `method` | `string` |  | A method name or a namespace. |
+| `type` | `string` |  | A type name. |
+| `full` | `boolean` |  | For a namespace, include every method's parameters. Default `false`. |
+
 ### `plugins.getSource`
 
 Read an installed plugin's manifest, code and styles.
@@ -3989,7 +4014,7 @@ Read it with plugins.getSource (or source.get plugin:<id>) first. The patch vers
 
 Install (or update) a plugin written by the assistant. The user reviews the code and permissions first.
 
-code is plain JavaScript run in a sandbox. It must call Noteral.register(class extends Noteral.Plugin { async onload() {…} onunload() {…} }). Use this.app.<namespace>.<method>(params) for every App API method (e.g. this.app.sidebar.setTab, this.app.statusBar.setWidget, this.app.blocks.registerType, this.app.nodes.registerType, this.app.home.addWidget), this.addCommand({ id, title, run }), this.setStatus(itemId, text), this.setPanel(panelId, { title, markdown, actions }), this.onPanelAction(panelId, fn), this.onViewMessage(fn), this.registerEvent(eventName, fn), this.addStyles(css), this.loadData() / this.saveData(patch). The plugin is test-run first (see plugins.test) and, after installing, its start-up is checked: the result's `health` reports errors so you can fix and reinstall.
+code is plain JavaScript run in a sandbox. It must call Noteral.register(class extends Noteral.Plugin { async onload() {…} onunload() {…} }). Use this.app.<namespace>.<method>(params) for every App API method (e.g. this.app.sidebar.setTab, this.app.statusBar.setWidget, this.app.blocks.registerType, this.app.nodes.registerType, this.app.home.addWidget), this.addCommand({ id, title, run }), this.setStatus(itemId, text), this.setPanel(panelId, { title, markdown, actions }), this.onPanelAction(panelId, fn), this.onViewMessage(fn), this.registerEvent(eventName, fn), this.addStyles(css), this.loadData() / this.saveData(patch), this.storage.get/set/list/delete, this.readFile(path), this.registerSuggester(def, getItems, onSelect), this.registerPropertyType(def), this.addOverlay(def), this.exposeApi(methods) / this.callPlugin(id, method, args) and this.register(cleanup). Look up details with plugins.docs. The plugin is test-run first (see plugins.test) and, after installing, its start-up is checked: the result's `health` reports errors so you can fix and reinstall.
 
 **Permission:** none · **Returns:** `PluginInstallResult` · **Callers:** assistant · **Assistant modes:** Creator · **Asks first**
 
@@ -4596,6 +4621,19 @@ export interface PluginInfo {
   source: string;
   permissions: string[];
   problem?: string;
+}
+
+/** plugins.docs: the plugin guide, method reference and types, for writing plugins. */
+export interface PluginDocsResult {
+  /** Matching guide sections (topic), with their text. */
+  sections?: { title: string; text: string }[];
+  /** Method reference (method or namespace), including plugin-only methods. */
+  methods?: { name: string; summary: string; details?: string; permission: string | null; callers: string[]; params?: unknown; returns: string }[];
+  /** Type definitions (type, or the types a looked-up method returns). */
+  types?: Record<string, string>;
+  /** With no arguments: what can be looked up. */
+  index?: { sections: string[]; namespaces: Record<string, number>; events: string[]; permissions: string[] };
+  hint?: string;
 }
 
 export interface PluginSourceInfo {

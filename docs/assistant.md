@@ -99,6 +99,8 @@ The context ring in the composer opens a **context window** breakdown: a segment
 
 In Creator mode the assistant can build interface as well as change settings: right-sidebar tabs (stacked in split groups), status-bar widgets, custom editor blocks, custom page types in the tree, Home views with HTML widgets and custom CSS, database views, filters, sorts and properties. These are the same methods plugins use, described in [Extending the interface](plugins/ui.md).
 
+While it writes plugin code, the assistant looks things up with `plugins.docs`: sections of the [plugin guide](plugins/README.md) by topic, any method or namespace in the API reference (including plugin-only ones such as `storage`, suggesters and popovers, which it has no tools for) and the API's type definitions. The guide is built into the app from `docs/plugins/*.md` by `scripts/build-sdk.mjs`, so it always matches the SDK version.
+
 When it writes a plugin with `plugins.create`, the assistant first runs it in a throwaway sandbox with `plugins.test`. If it throws or logs errors, the assistant reads the error, fixes the code and tests again. After installing, it checks the plugin's start-up health and reads `plugins.logs` when something fails. You see the name, permissions and size in an approval card. Approving installs it as **Made by assistant**.
 
 ### Layers: turning changes on and off

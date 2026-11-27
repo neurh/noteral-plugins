@@ -64,12 +64,17 @@ Every HTML view gets `window.noteral`:
 | `noteral.post(name, payload)` | Sends a message to your plugin, which receives it as the `view:message` event. |
 | `onMessage(fn)` | Receives `views.post(...)` messages from your plugin. |
 | `noteral.open(target)` | Opens a page id, `noteral://page/<id>` or an `https://` URL. |
+| `noteral.popover(opts, at)` | Opens an HTML popover anchored to `at`: an element, a rect, `"self"` (this view), `"pointer"`, `"selection"`, `"status:<widgetId>"` or `"block:<id>"`. Resolves with the value the popover closes with. |
+| `noteral.menu(items, at)` / `contextMenu(items, event)` | A native menu; resolves with the picked item's id. |
+| `noteral.modal(opts)` | An HTML dialog; resolves with its close value. |
+| `noteral.close(value)` | Closes the popover, dialog or editor this view is in, returning `value`. |
+| `noteral.resize()` | Measures the content again (height, and width in the status bar). |
 
 Views follow the app's theme automatically. Every token (`--bg`, `--text`, `--accent`, `--border`, `--radius-md`, `--font-ui`, …) is defined inside the frame. A small kit is also built in: `.n-card`, `.n-row`, `.n-col`, `.n-grid`, `.n-list`, `.n-chip`, `.n-muted`, `.n-faint`, and buttons with `.primary` / `.ghost`. Height follows the content (it grows and shrinks) unless the surface fills its space (full custom pages, Home widgets).
 
 **Your CSS always wins.** The kit lives in a cascade layer (`@layer noteral`) and uses zero-specificity `:where()` selectors, so any rule you write overrides it, with no `!important` needed. The frame itself is **transparent**: `html` and `body` have no background, and the iframe follows the app's color scheme, so the browser doesn't paint a white or black canvas behind a view. If you want a card, give it a background yourself (`background: var(--bg-elevated)`).
 
-**Surfaces.** `noteral.surface` (also `<html data-surface="…">`) tells a view where it is drawn: `page`, `block`, `sidebar`, `status`, `home` or `panel`. `noteral.fill` is `true` when the view should fill its box. Use them to adapt one view to several places:
+**Surfaces.** `noteral.surface` (also `<html data-surface="…">`) tells a view where it is drawn: `page`, `block`, `sidebar`, `status`, `home`, `panel`, `popover` or `overlay`. `noteral.fill` is `true` when the view should fill its box. Use them to adapt one view to several places:
 
 ```css
 html[data-surface="status"] body { font-size: 12px; }   /* the kit is already compact there */
@@ -171,11 +176,14 @@ Field types are `toggle`, `text`, `textarea`, `number`, `slider` (`min`/`max`/`s
 
 ```ts
 await this.app.statusBar.setWidget({ id: "clock", text: "12:00", icon: "clock", side: "right", order: 5 });
-// or a live HTML widget, 16–480 px wide:
-await this.app.statusBar.setWidget({ id: "pomodoro", html: "<span id=t>25:00</span><script>…</script>", width: 72 });
+// or a live HTML widget; width is px, "auto" (fits its content), "fill" (takes the free space) or "40%":
+await this.app.statusBar.setWidget({ id: "pomodoro", html: "<span id=t>25:00</span><script>…</script>", width: "auto", minWidth: 60 });
+// a popup next to the widget, opened and closed by clicking it:
+await this.app.statusBar.setWidget({ id: "sync", icon: "cloud", tone: "success", badge: "2", popup: { html: "<h3>Sync</h3>…", width: 280 } });
+await this.app.statusBar.updateWidget({ id: "sync", progress: 0.6, text: "60%" }); // merge a change
 ```
 
-Set `command` on a text widget to run one of your commands when it's clicked.
+Set `command` on a text widget to run one of your commands when it's clicked. The command receives `{ source: "status", widget, anchor }`, so it can open a popover at `anchor`. See [Status bar widgets and popups](README.md#status-bar-widgets-and-popups) for every option, [Floating overlays](README.md#floating-overlays) and [Custom database property types](README.md#custom-database-property-types).
 
 ## Home
 

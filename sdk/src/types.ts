@@ -494,6 +494,19 @@ export interface PluginInfo {
   problem?: string;
 }
 
+/** plugins.docs: the plugin guide, method reference and types, for writing plugins. */
+export interface PluginDocsResult {
+  /** Matching guide sections (topic), with their text. */
+  sections?: { title: string; text: string }[];
+  /** Method reference (method or namespace), including plugin-only methods. */
+  methods?: { name: string; summary: string; details?: string; permission: string | null; callers: string[]; params?: unknown; returns: string }[];
+  /** Type definitions (type, or the types a looked-up method returns). */
+  types?: Record<string, string>;
+  /** With no arguments: what can be looked up. */
+  index?: { sections: string[]; namespaces: Record<string, number>; events: string[]; permissions: string[] };
+  hint?: string;
+}
+
 export interface PluginSourceInfo {
   manifest: Record<string, unknown>;
   code: string;

@@ -2667,6 +2667,21 @@ List installed plugins.
 
 No parameters.
 
+### `plugins.docs`
+
+Look up the plugin guide, the full API reference (including plugin-only methods such as storage, suggesters, popovers and plugins.expose) and type definitions.
+
+Use it while writing or fixing a plugin instead of guessing. No arguments: an index of guide sections, namespaces, events and permissions. topic: guide sections matching words (e.g. "overlays", "property types", "storage", "view runtime", "manifest contributes"). method: one method ("statusBar.setWidget") or a whole namespace ("storage") with parameters. type: a type definition ("PropertyTypeDefinition").
+
+**Permission:** none · **Returns:** `PluginDocsResult` · **Callers:** assistant · **Assistant modes:** Ask, Edit, Creator
+
+| Param | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `topic` | `string` |  | Words to find in the guide. |
+| `method` | `string` |  | A method name or a namespace. |
+| `type` | `string` |  | A type name. |
+| `full` | `boolean` |  | For a namespace, include every method's parameters. Default `false`. |
+
 ### `plugins.getSource`
 
 Read an installed plugin's manifest, code and styles.
@@ -2699,7 +2714,7 @@ Read it with plugins.getSource (or source.get plugin:<id>) first. The patch vers
 
 Install (or update) a plugin written by the assistant. The user reviews the code and permissions first.
 
-code is plain JavaScript run in a sandbox. It must call Noteral.register(class extends Noteral.Plugin { async onload() {…} onunload() {…} }). Use this.app.<namespace>.<method>(params) for every App API method (e.g. this.app.sidebar.setTab, this.app.statusBar.setWidget, this.app.blocks.registerType, this.app.nodes.registerType, this.app.home.addWidget), this.addCommand({ id, title, run }), this.setStatus(itemId, text), this.setPanel(panelId, { title, markdown, actions }), this.onPanelAction(panelId, fn), this.onViewMessage(fn), this.registerEvent(eventName, fn), this.addStyles(css), this.loadData() / this.saveData(patch). The plugin is test-run first (see plugins.test) and, after installing, its start-up is checked: the result's `health` reports errors so you can fix and reinstall.
+code is plain JavaScript run in a sandbox. It must call Noteral.register(class extends Noteral.Plugin { async onload() {…} onunload() {…} }). Use this.app.<namespace>.<method>(params) for every App API method (e.g. this.app.sidebar.setTab, this.app.statusBar.setWidget, this.app.blocks.registerType, this.app.nodes.registerType, this.app.home.addWidget), this.addCommand({ id, title, run }), this.setStatus(itemId, text), this.setPanel(panelId, { title, markdown, actions }), this.onPanelAction(panelId, fn), this.onViewMessage(fn), this.registerEvent(eventName, fn), this.addStyles(css), this.loadData() / this.saveData(patch), this.storage.get/set/list/delete, this.readFile(path), this.registerSuggester(def, getItems, onSelect), this.registerPropertyType(def), this.addOverlay(def), this.exposeApi(methods) / this.callPlugin(id, method, args) and this.register(cleanup). Look up details with plugins.docs. The plugin is test-run first (see plugins.test) and, after installing, its start-up is checked: the result's `health` reports errors so you can fix and reinstall.
 
 **Permission:** none · **Returns:** `PluginInstallResult` · **Callers:** assistant · **Assistant modes:** Creator · **Asks first**
 
@@ -3306,6 +3321,19 @@ export interface PluginInfo {
   source: string;
   permissions: string[];
   problem?: string;
+}
+
+/** plugins.docs: the plugin guide, method reference and types, for writing plugins. */
+export interface PluginDocsResult {
+  /** Matching guide sections (topic), with their text. */
+  sections?: { title: string; text: string }[];
+  /** Method reference (method or namespace), including plugin-only methods. */
+  methods?: { name: string; summary: string; details?: string; permission: string | null; callers: string[]; params?: unknown; returns: string }[];
+  /** Type definitions (type, or the types a looked-up method returns). */
+  types?: Record<string, string>;
+  /** With no arguments: what can be looked up. */
+  index?: { sections: string[]; namespaces: Record<string, number>; events: string[]; permissions: string[] };
+  hint?: string;
 }
 
 export interface PluginSourceInfo {
